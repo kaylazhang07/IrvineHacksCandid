@@ -1,0 +1,70 @@
+export interface UserProfile {
+  zip_code: string;
+  housing_status: 'renter' | 'owner' | 'other';
+  has_children: boolean;
+  household_income_bracket: 'under_50k' | '50_100k' | '100_200k' | 'over_200k';
+  primary_concerns: string[];
+}
+
+export interface Citation {
+  chunk_id: string;
+  chunk_text: string;
+  source_url: string;
+  plain_translation: string;
+  relevance_score: number;
+}
+
+export interface BudgetShift {
+  category: string;
+  delta_pct: number;
+  delta_usd: number;
+  personal_annual_usd: number;
+}
+
+export interface MapPin {
+  lat: number;
+  lon: number;
+  label: string;
+  category: string;
+  measure_id: string;
+  address?: string;
+}
+
+export interface ExplainResponse {
+  measure_id: string;
+  measure_title: string;
+  plain_english_summary: string;
+  personal_impact_statement: string;
+  citations: Citation[];
+  budget_shifts: BudgetShift[];
+  map_pins: MapPin[];
+  confidence_score: number;
+}
+
+export interface ExplainRequest {
+  measure_id: string;
+  measure_text: string;
+  measure_title: string;
+  user: UserProfile;
+}
+
+export interface BudgetRequest {
+  measure_id: string;
+  user: UserProfile;
+}
+
+export interface BudgetResponse {
+  shifts: BudgetShift[];
+  model_r2: number;
+}
+
+export type CategoryType = 'housing' | 'education' | 'transportation' | 'public_safety' | 'environment' | 'other';
+
+export const CATEGORY_COLORS: Record<CategoryType, string> = {
+  housing: '#6366f1',
+  education: '#f59e0b',
+  transportation: '#10b981',
+  public_safety: '#ef4444',
+  environment: '#22c55e',
+  other: '#94a3b8',
+};
