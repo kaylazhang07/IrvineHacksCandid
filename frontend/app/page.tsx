@@ -73,7 +73,7 @@ const FEATURES = [
 const STEPS = [
   { n: '01', title: 'Tell us about your life', desc: 'Five quick questions about your housing, income, family, and what you care about. Takes 60 seconds.' },
   { n: '02', title: 'We pull real legislation', desc: 'Candid searches 30,000+ chunked legislative documents in our vector database, filtered to your jurisdiction.' },
-  { n: '03', title: 'Claude reads it for you', desc: 'Our AI reads the raw legalese and writes a plain-English summary — personalized to your exact profile.' },
+  { n: '03', title: 'The algorithm reads it for you', desc: 'Our AI reads the raw legalese and writes a plain-English summary — personalized to your exact profile.' },
   { n: '04', title: 'You get the full picture', desc: 'Dollar impact for your household, citations to real clauses, confidence scores, and a live map of affected streets.' },
 ];
 
