@@ -60,13 +60,13 @@ export function OnboardingForm() {
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.div key="step0" variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
-              <h1 className="text-2xl font-bold mb-2">Find your ballot</h1>
-              <p className="text-zinc-500 mb-6">Enter your ZIP code to see measures on your ballot.</p>
+              <h1 className="text-2xl font-bold mb-2 text-zinc-900">Find your ballot</h1>
+              <p className="text-zinc-800 mb-6">Enter your ZIP code to see measures on your ballot.</p>
               <input
                 type="text" inputMode="numeric" maxLength={5}
                 placeholder="94601"
                 value={zip} onChange={e => setZip(e.target.value)}
-                className="w-full border border-zinc-300 rounded-xl px-4 py-3 text-lg mb-4 focus:outline-none focus:ring-2 focus:ring-zinc-800"
+                className="w-full border border-zinc-300 rounded-xl px-4 py-3 text-lg mb-4 focus:outline-none focus:ring-2 focus:ring-zinc-800 text-zinc-900 placeholder:text-zinc-500"
               />
               <button
                 onClick={next} disabled={zip.length !== 5}
