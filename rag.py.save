@@ -1,0 +1,54 @@
+from sentence_transformers import SentenceTransformer
+import psycopg2
+from groq import Groq
+import os
+
+print("Starting RAG...")
+
+# Load embedding model (free + local)
+embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+# Connect to Postgres
+conn = psycopg2.connect(
+    dbname="civic",
+    user="anvijain",
+    host="localhost"
+)
+cur = conn.cursor()
+
+# Initialize Groq client
+# Make sure your GROQ_API_KEY is set in your environment
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+# User query
+query = input("Ask a question: ")
+
+# Step 1: Embed the query
+query_embedding = embed_model.encode(query).tolist()
+vector_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+
+# Step 2: Retrieve relevant documents
+cur.execute(f"""
+    SELECT content
+    FROM documents
+    ORDER BY embedding <-> '{vector_str}'
+    LIMIT 3;
+""")
+
+results = cur.fetchall()
+context = "\n".join([r[0] for r in results])
+
+print("\nRetrieved context:")
+print(context)
+
+# Step 3: Send to Groq for generation
+response = client.chat.completions.create(
+    model="llama3-8b-8192",  # free + fast on Groq
+    messages=[
+        {"role": "system", "content": "Answer using only the provided context."},
+        {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
+    ]
+)
+
+print("\nFinal Answer:")
+print(response.choices[0].m

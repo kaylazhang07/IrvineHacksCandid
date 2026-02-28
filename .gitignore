@@ -1,0 +1,20 @@
+# deps
+frontend/node_modules/
+backend/venv/
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# env
+frontend/.env.local
+backend/.env
+
+# misc
+.DS_Store
+*.pkl
+backend/chroma_db/
+backend/data/census_raw/
+backend/ml/*.pkl
+backend/ml/*.joblib
+chroma_db/

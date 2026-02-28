@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+chromadb
+sentence-transformers
+groq
+scikit-learn
+pandas
+python-dotenv
+requests
+beautifulsoup4
