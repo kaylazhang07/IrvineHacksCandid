@@ -369,7 +369,7 @@ export default function Home() {
               href="/onboarding"
               className="px-8 py-3.5 rounded-full font-semibold text-white text-sm bg-zinc-900 hover:bg-zinc-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
             >
-              My Races →
+              My Ballot →
             </Link>
             <a
               href="#features"
