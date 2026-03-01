@@ -10,6 +10,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payl
   const d = payload[0].payload;
   const isPos = d.personal_annual_usd >= 0;
   return (
+<<<<<<< HEAD
     <div style={{
       background: '#FDFCF8', border: '1px solid rgba(180,155,120,0.22)',
       borderRadius: 12, padding: '10px 14px', fontSize: 12,
@@ -24,6 +25,12 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payl
       <p style={{ color: '#78716C', marginTop: 2 }}>
         {d.delta_pct >= 0 ? '+' : ''}{d.delta_pct.toFixed(1)}% citywide
       </p>
+=======
+    <div className="bg-white border border-zinc-200 rounded-xl p-3 shadow text-xs">
+      <p className="font-semibold mb-1 capitalize">{String(label).replace('_', ' ')}</p>
+      {personal && <p>{formatDollar(personal.value)} for you</p>}
+      {citywide && <p>{citywide.value > 0 ? '+' : ''}{(isFinite(citywide.value) ? citywide.value : 0).toFixed(1)}% statewide</p>}
+>>>>>>> 03f0aaa3645065efaa02ec1db03df111b5b1200a
     </div>
   );
 }
@@ -39,6 +46,7 @@ export function BudgetChart({ shifts }: Props) {
   }));
 
   return (
+<<<<<<< HEAD
     <div className="flex items-center gap-6">
       {/* Donut */}
       <div style={{ width: 160, height: 160, flexShrink: 0 }}>
@@ -84,6 +92,20 @@ export function BudgetChart({ shifts }: Props) {
           );
         })}
       </div>
+=======
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+          <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={v => String(v).replace('_', ' ')} />
+          <YAxis yAxisId="left" tick={{ fontSize: 11 }} label={{ value: 'Your impact $', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
+          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} label={{ value: 'State-wide %', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar yAxisId="left" dataKey="personal_annual_usd" name="Your impact" fill="#6366f1" radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="right" dataKey="delta_pct" name="State-wide %" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+>>>>>>> 03f0aaa3645065efaa02ec1db03df111b5b1200a
     </div>
   );
 }

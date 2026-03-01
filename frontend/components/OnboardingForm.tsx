@@ -162,8 +162,8 @@ export function OnboardingForm() {
           {/* Step 1: ZIP */}
           {step === 1 && (
             <motion.div key="step1" variants={variants} initial="enter" animate="center" exit="exit" transition={transition}>
-              <h1 className="text-2xl font-bold mb-1 text-zinc-900">Your ZIP code</h1>
-              <p className="text-zinc-500 mb-6 text-sm">We use this to identify the specific ballot in your county.</p>
+              <h1 className="text-2xl font-bold mb-1 text-zinc-900">What's your ZIP code?</h1>
+              <p className="text-zinc-500 mb-6 text-sm">Every ZIP has different races — this helps us find yours.</p>
               <input
                 type="text"
                 inputMode="numeric"
@@ -179,7 +179,7 @@ export function OnboardingForm() {
                 disabled={zip.length !== 5}
                 className="w-full bg-zinc-900 text-white rounded-xl py-3 font-semibold disabled:opacity-40 hover:bg-zinc-800 transition-colors"
               >
-                Find my ballot →
+                Show my ballot →
               </button>
             </motion.div>
           )}

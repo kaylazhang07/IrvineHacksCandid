@@ -7,36 +7,38 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapPin } from '@/lib/types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────────
+
 interface Props {
   initialZip: string;
   measureMap: Record<string, string>; // category → measure_id
   onPinClick: (pin: MapPin) => void;
+  onClearPin?: () => void;
   selectedMeasureId?: string | null;
-  activeCategories?: Set<string>;
   /** Impact scores per category: 0–1 scale (0 = negative, 0.5 = neutral, 1 = very positive) */
   impactScores?: Record<string, number>;
   /** Ballot measure descriptions keyed by measure_id */
   measureDescriptions?: Record<string, string>;
 }
+
 // Add a radius map at the top of the file
 const CATEGORY_RADIUS: Record<string, number> = {
-  healthcare:   12000,  // 12km — hospitals serve wide areas
-  education:    12000,  // 12km — universities are regional
-  transit:      5000,
-  greenspace:   5000,
-  grocery:      4000,
-  default:      5000,
-}; 
+  healthcare: 12000, // 12km — hospitals serve wide areas
+  education: 12000,  // 12km — universities are regional
+  transit: 5000,
+  greenspace: 5000,
+  grocery: 4000,
+  default: 5000,
+};
 
 /** How "official" a place type is — lower = more prominent, picked first */
 const TYPE_RANK: Record<string, Record<string, number>> = {
-  healthcare:    { hospital: 1, clinic: 2, centre: 2, doctors: 4, pharmacy: 5 },
-  education:     { university: 1, college: 1, school: 2, library: 3, kindergarten: 4 },
-  transportation:{ station: 1, halt: 2, bus_station: 3, bus_stop: 5 },
-  public_safety: { police: 1, fire_station: 1 },
-  environment:   { nature_reserve: 1, park: 2, garden: 3 },
-  government:    { townhall: 1, government: 1, courthouse: 2 },
-  economy:       { financial: 1, company: 2, bank: 3, atm: 5 },
+  healthcare:     { hospital: 1, clinic: 2, centre: 2, doctors: 4, pharmacy: 5 },
+  education:      { university: 1, college: 1, school: 2, library: 3, kindergarten: 4 },
+  transportation: { station: 1, halt: 2, bus_station: 3, bus_stop: 5 },
+  public_safety:  { police: 1, fire_station: 1 },
+  environment:    { nature_reserve: 1, park: 2, garden: 3 },
+  government:     { townhall: 1, government: 1, courthouse: 2 },
+  economy:        { financial: 1, company: 2, bank: 3, atm: 5 },
 };
 
 /**
@@ -44,22 +46,22 @@ const TYPE_RANK: Record<string, Record<string, number>> = {
  * Matching any of these adds a prominence bonus so it beats nearby smaller ones.
  */
 const PROMINENCE_KEYWORDS: Record<string, string[]> = {
-  healthcare:    [
+  healthcare: [
     'medical center', 'medical centre', 'hospital', 'health system',
     'health center', 'regional', 'university', 'children', 'memorial',
     'cedars', 'ucla', 'usc', 'kaiser', 'providence', 'adventist',
   ],
-  education:     [
+  education: [
     'university', 'college', 'institute', 'campus', 'academy',
     'district', 'unified', 'polytechnic', 'state',
   ],
-  transportation:[
+  transportation: [
     'international', 'central', 'union', 'metro', 'transit center',
   ],
-  environment:   [
+  environment: [
     'state park', 'national', 'preserve', 'botanical', 'arboretum',
   ],
-  government:    [
+  government: [
     'city hall', 'federal', 'county', 'municipal', 'courthouse', 'civic',
   ],
 };
@@ -68,9 +70,9 @@ const PROMINENCE_KEYWORDS: Record<string, string[]> = {
  * Score a candidate POI — higher is better.
  *
  * Components:
- *   - type rank   (hospital=1 → 900 pts, doctor=4 → 600 pts)
- *   - name keywords (major institution → +400 pts)
- *   - distance penalty (−1 pt per 100 m — a tie-breaker, not the main factor)
+ *  - type rank  (hospital=1 → 900 pts, doctor=4 → 600 pts)
+ *  - name keywords (major institution → +400 pts)
+ *  - distance penalty (−1 pt per 100 m — a tie-breaker, not the main factor)
  *
  * This means a hospital 5 km away beats a doctor's office 0.1 km away.
  */
@@ -97,43 +99,37 @@ function scoreCandidate(
 
 const isValidPlaceName = (name: string | undefined): boolean => {
   if (!name) return false;
-  
   const trimmed = name.trim();
-  
-  
   if (trimmed.length <= 2) return false;
-  
-  
   if (/^\d+$/.test(trimmed)) return false;
-
   if (/^[A-Za-z]\d*$/.test(trimmed)) return false;
-  
   // Reject generic system strings
   const lower = trimmed.toLowerCase();
   const blacklisted = ['unknown', 'n/a', 'undefined', 'null', 'point'];
   if (blacklisted.includes(lower)) return false;
-
   return true;
 };
+
 // ─── Visual Config ────────────────────────────────────────────────────────────────
+
 // Muted, sophisticated accent colors — Pale Rose, Muted Lavender, Sage, etc.
 const PILL_COLORS: Record<string, string> = {
-  housing:       '#8B7EC8', // Muted Lavender
-  education:     '#C47B76', // Pale Rose
-  transportation:'#6A9EB8', // Muted Steel Blue
-  public_safety: '#B87560', // Muted Terracotta
-  environment:   '#6B9E82', // Sage
-  healthcare:    '#B5789C', // Muted Mauve
-  economy:       '#A88E44', // Muted Amber
-  water:         '#6A9EB8', // Muted Steel Blue
-  civil_rights:  '#9B82C2', // Soft Violet
-  government:    '#8A9AA8', // Warm Slate
-  family:        '#C08070', // Muted Coral
-  immigration:   '#9B82C2', // Soft Violet
-  technology:    '#5EA8B8', // Muted Cyan
-  taxes:         '#A88E44', // Muted Amber
-  foreign_policy:'#8A9AA8', // Warm Slate
-  other:         '#8A9AA8', // Warm Slate
+  housing:        '#8B7EC8', // Muted Lavender
+  education:      '#C47B76', // Pale Rose
+  transportation: '#6A9EB8', // Muted Steel Blue
+  public_safety:  '#B87560', // Muted Terracotta
+  environment:    '#6B9E82', // Sage
+  healthcare:     '#B5789C', // Muted Mauve
+  economy:        '#A88E44', // Muted Amber
+  water:          '#6A9EB8', // Muted Steel Blue
+  civil_rights:   '#9B82C2', // Soft Violet
+  government:     '#8A9AA8', // Warm Slate
+  family:         '#C08070', // Muted Coral
+  immigration:    '#9B82C2', // Soft Violet
+  technology:     '#5EA8B8', // Muted Cyan
+  taxes:          '#A88E44', // Muted Amber
+  foreign_policy: '#8A9AA8', // Warm Slate
+  other:          '#8A9AA8', // Warm Slate
 };
 
 const PILL_ICONS: Record<string, string> = {
@@ -144,85 +140,87 @@ const PILL_ICONS: Record<string, string> = {
 };
 
 // ─── Impact narrative templates ───────────────────────────────────────────────────
+
 const IMPACT_NARRATIVES: Record<string, { positive: string; negative: string; neutral: string }> = {
   healthcare: {
     positive: '**{name}** could expand services — potentially opening a new wing, hiring more staff, and reducing ER wait times for your neighborhood.',
     negative: '**{name}** may face funding cuts — potentially reducing available beds, staff, and lengthening wait times for your community.',
-    neutral: '**{name}** would see minimal immediate change, but long-term funding structures may shift.',
+    neutral:  '**{name}** would see minimal immediate change, but long-term funding structures may shift.',
   },
   education: {
     positive: '**{name}** could receive increased funding — meaning smaller class sizes, updated materials, and new after-school programs.',
     negative: '**{name}** may see budget reductions — risking larger class sizes, program cuts, and deferred maintenance.',
-    neutral: '**{name}** would maintain current funding levels with modest adjustments.',
+    neutral:  '**{name}** would maintain current funding levels with modest adjustments.',
   },
   transportation: {
     positive: '**{name}** could see expanded routes, increased frequency, and accessibility upgrades — shortening your commute.',
     negative: '**{name}** may face service reductions — fewer routes, longer wait times, and deferred maintenance on infrastructure.',
-    neutral: '**{name}** would continue current service levels with incremental changes.',
+    neutral:  '**{name}** would continue current service levels with incremental changes.',
   },
   public_safety: {
     positive: '**{name}** could hire additional personnel, upgrade equipment, and improve response times in your area.',
     negative: '**{name}** may face staffing reductions and slower emergency response times in your neighborhood.',
-    neutral: '**{name}** would maintain current operations with minor budgetary adjustments.',
+    neutral:  '**{name}** would maintain current operations with minor budgetary adjustments.',
   },
   environment: {
     positive: '**{name}** could receive restoration funding — more green space, cleaner trails, and improved biodiversity in your area.',
     negative: '**{name}** may lose maintenance funding — leading to trail degradation and reduced park services.',
-    neutral: '**{name}** would see stable conditions with modest improvements over time.',
+    neutral:  '**{name}** would see stable conditions with modest improvements over time.',
   },
   housing: {
     positive: 'Near **{name}**, new affordable units could be built, rent stabilization expanded, and tenant protections strengthened.',
     negative: 'Near **{name}**, affordable housing development may stall and existing protections could weaken.',
-    neutral: 'Near **{name}**, housing conditions would remain relatively stable with gradual market-driven changes.',
+    neutral:  'Near **{name}**, housing conditions would remain relatively stable with gradual market-driven changes.',
   },
   economy: {
     positive: '**{name}** and nearby businesses could see growth incentives — more jobs, small business grants, and economic activity in your area.',
     negative: '**{name}** area may face reduced business support — fewer grants, tighter lending, and slower job growth.',
-    neutral: '**{name}** area would experience steady economic conditions without major policy shifts.',
+    neutral:  '**{name}** area would experience steady economic conditions without major policy shifts.',
   },
   water: {
     positive: '**{name}** infrastructure could be upgraded — cleaner water, better pressure, and modernized treatment for your neighborhood.',
     negative: '**{name}** may face deferred infrastructure repairs — risking water quality and reliability issues.',
-    neutral: '**{name}** would continue current service with standard maintenance schedules.',
+    neutral:  '**{name}** would continue current service with standard maintenance schedules.',
   },
   government: {
     positive: '**{name}** could expand public services, improve transparency, and increase community engagement programs.',
     negative: '**{name}** may reduce office hours, staff, and accessible services for residents.',
-    neutral: '**{name}** would maintain current operations with standard adjustments.',
+    neutral:  '**{name}** would maintain current operations with standard adjustments.',
   },
   civil_rights: {
     positive: '**{name}** could expand legal aid, civil rights enforcement, and community advocacy resources.',
     negative: '**{name}** may see reduced legal aid funding and fewer civil rights enforcement resources.',
-    neutral: '**{name}** would maintain current programs with modest changes.',
+    neutral:  '**{name}** would maintain current programs with modest changes.',
   },
   family: {
     positive: '**{name}** could expand programming — more youth activities, senior services, and family support resources.',
     negative: '**{name}** may reduce hours, programming, and community resources available to families.',
-    neutral: '**{name}** would continue current programming with minor adjustments.',
+    neutral:  '**{name}** would continue current programming with minor adjustments.',
   },
   immigration: {
     positive: '**{name}** could expand services — more legal aid, language assistance, and pathway-to-citizenship resources.',
     negative: '**{name}** may face funding cuts — reducing available legal aid and support services.',
-    neutral: '**{name}** would maintain current service levels.',
+    neutral:  '**{name}** would maintain current service levels.',
   },
   technology: {
     positive: '**{name}** area could see expanded broadband access, digital literacy programs, and tech infrastructure investment.',
     negative: '**{name}** area may face reduced digital equity funding and slower infrastructure upgrades.',
-    neutral: '**{name}** area would see gradual tech improvements at current pace.',
+    neutral:  '**{name}** area would see gradual tech improvements at current pace.',
   },
   taxes: {
     positive: '**{name}** could help you navigate new tax benefits — potential credits, deductions, and relief programs for your bracket.',
     negative: '**{name}** area residents may face increased tax burden or reduced refund programs.',
-    neutral: '**{name}** area would see stable tax rates with minor bracket adjustments.',
+    neutral:  '**{name}** area would see stable tax rates with minor bracket adjustments.',
   },
   foreign_policy: {
     positive: '**{name}** could expand consular services and international community support programs.',
     negative: '**{name}** may face reduced diplomatic services affecting local international communities.',
-    neutral: '**{name}** would maintain current operations.',
+    neutral:  '**{name}** would maintain current operations.',
   },
 };
 
 // ─── Haversine distance (meters) ─────────────────────────────────────────────────
+
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6_371_000;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -235,69 +233,70 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
 }
 
 // ─── Universal OSM tag validation ────────────────────────────────────────────────
+
 const VALID_TAGS: Record<string, Record<string, string[]>> = {
   healthcare: {
-    amenity: ['hospital', 'clinic', 'doctors', 'dentist', 'pharmacy', 'nursing_home', 'veterinary'],
-    healthcare: ['hospital', 'clinic', 'doctor', 'centre', 'pharmacy', 'dentist'],
+    amenity:     ['hospital', 'clinic', 'doctors', 'dentist', 'pharmacy', 'nursing_home', 'veterinary'],
+    healthcare:  ['hospital', 'clinic', 'doctor', 'centre', 'pharmacy', 'dentist'],
   },
   education: {
     amenity: ['school', 'university', 'college', 'library', 'kindergarten', 'language_school', 'music_school'],
   },
   transportation: {
     public_transport: ['station', 'stop_position', 'platform', 'stop_area'],
-    railway: ['station', 'halt', 'tram_stop', 'subway_entrance'],
-    amenity: ['bus_station', 'ferry_terminal', 'taxi'],
-    highway: ['bus_stop'],
-    aeroway: ['aerodrome', 'terminal'],
+    railway:          ['station', 'halt', 'tram_stop', 'subway_entrance'],
+    amenity:          ['bus_station', 'ferry_terminal', 'taxi'],
+    highway:          ['bus_stop'],
+    aeroway:          ['aerodrome', 'terminal'],
   },
   public_safety: {
-    amenity: ['police', 'fire_station', 'ranger_station'],
+    amenity:   ['police', 'fire_station', 'ranger_station'],
     emergency: ['ambulance_station', 'fire_hydrant'],
   },
   environment: {
-    leisure: ['park', 'nature_reserve', 'garden', 'dog_park'],
+    leisure:  ['park', 'nature_reserve', 'garden', 'dog_park'],
     boundary: ['national_park', 'protected_area'],
-    natural: ['wood', 'wetland', 'beach'],
-    landuse: ['forest', 'recreation_ground'],
+    natural:  ['wood', 'wetland', 'beach'],
+    landuse:  ['forest', 'recreation_ground'],
   },
   housing: {
-    office: ['estate_agent', 'housing'],
-    building: ['apartments', 'residential'],
+    office:          ['estate_agent', 'housing'],
+    building:        ['apartments', 'residential'],
     social_facility: ['shelter', 'housing'],
-    amenity: ['shelter', 'social_facility'],
+    amenity:         ['shelter', 'social_facility'],
   },
   economy: {
     amenity: ['bank', 'bureau_de_change', 'atm'],
-    office: ['financial', 'company', 'insurance', 'coworking'],
-    shop: ['mall', 'department_store'],
+    office:  ['financial', 'company', 'insurance', 'coworking'],
+    shop:    ['mall', 'department_store'],
   },
   water: {
-    amenity: ['drinking_water', 'water_point', 'watering_place'],
+    amenity:  ['drinking_water', 'water_point', 'watering_place'],
     man_made: ['water_tower', 'water_works', 'water_well', 'reservoir_covered'],
-    office: ['water_utility'],
-    landuse: ['reservoir'],
-    natural: ['spring'],
+    office:   ['water_utility'],
+    landuse:  ['reservoir'],
+    natural:  ['spring'],
   },
   government: {
     amenity: ['townhall', 'public_building', 'courthouse'],
-    office: ['government', 'administrative'],
+    office:  ['government', 'administrative'],
   },
   civil_rights: {
     amenity: ['courthouse'],
-    office: ['lawyer', 'ngo', 'association', 'political_party'],
+    office:  ['lawyer', 'ngo', 'association', 'political_party'],
   },
   family: {
-    amenity: ['community_centre', 'childcare', 'social_facility'],
-    leisure: ['playground', 'sports_centre', 'swimming_pool'],
+    amenity:         ['community_centre', 'childcare', 'social_facility'],
+    leisure:         ['playground', 'sports_centre', 'swimming_pool'],
     social_facility: ['group_home', 'nursing_home', 'food_bank'],
   },
   immigration: {
-    office: ['immigration', 'diplomatic', 'ngo', 'association'],
+    office:  ['immigration', 'diplomatic', 'ngo', 'association'],
     amenity: ['embassy', 'social_facility'],
   },
   technology: {
-    office: ['it', 'telecommunication', 'research'],
-    shop: ['computer', 'electronics', 'mobile_phone'],
+    office:   ['it', 'telecommunication', 'research'],
+    shop:     ['computer', 'electronics', 'mobile_phone'],
     man_made: ['communications_tower'],
   },
   taxes: {
@@ -305,7 +304,7 @@ const VALID_TAGS: Record<string, Record<string, string[]>> = {
   },
   foreign_policy: {
     amenity: ['embassy'],
-    office: ['diplomatic', 'consulate'],
+    office:  ['diplomatic', 'consulate'],
   },
 };
 
@@ -320,8 +319,8 @@ function isValidForCategory(category: string, tags: Record<string, string> | und
   return false;
 }
 
-type PinLocation = { name: string; lat: number; lon: number; type?: string; address?: string | null};
-type PinMap = Record<string, PinLocation| null>;
+type PinLocation = { name: string; lat: number; lon: number; type?: string; address?: string | null };
+type PinMap = Record<string, PinLocation | null>;
 
 const pinCache: Record<string, PinMap> = {};
 
@@ -333,6 +332,7 @@ function cacheKey(lat: number, lng: number): string {
 const PIN_CACHE_VERSION = 5;
 
 // ─── Prioritized Overpass queries per category ────────────────────────────────────
+
 const PRIORITY_QUERIES: Record<string, Array<{ q: string; r: number }>> = {
   healthcare: [
     { q: 'way["amenity"="hospital"](around:{R},{LAT},{LNG});node["amenity"="hospital"](around:{R},{LAT},{LNG});', r: 10000 },
@@ -410,6 +410,7 @@ const PRIORITY_QUERIES: Record<string, Array<{ q: string; r: number }>> = {
 };
 
 // ─── Core Overpass fetcher ────────────────────────────────────────────────────────
+
 async function fetchCategoryPinOverpass(
   category: string,
   lat: number,
@@ -425,6 +426,7 @@ async function fetchCategoryPinOverpass(
       .replaceAll('{LAT}', lat.toFixed(6))
       .replaceAll('{LNG}', lng.toFixed(6))
       .replaceAll('{R}', String(radius));
+
     const query = `[out:json][timeout:10];(${inner});out center 10;`;
 
     try {
@@ -450,7 +452,6 @@ async function fetchCategoryPinOverpass(
             el.tags?.['name:en'] ??
             el.tags?.operator ??
             el.tags?.brand;
-
           if (!isValidPlaceName(rawName)) return null;
 
           return {
@@ -464,15 +465,13 @@ async function fetchCategoryPinOverpass(
         .filter(Boolean) as (PinLocation & { distance: number; type: string })[];
 
       // ── FIX 1: skip this tier entirely if it produced zero VALID candidates ──
-      // (old code would return null here and move on, but the loop `continue`d
-      //  anyway — the real bug was that we never sorted by score)
       if (candidates.length === 0) continue;
 
       // ── FIX 2: pick the most PROMINENT result, not just the nearest ──────────
       candidates.sort((a, b) => scoreCandidate(b, category) - scoreCandidate(a, category));
+
       const best = candidates[0];
       return { name: best.name, lat: best.lat, lon: best.lon, type: best.type };
-
     } catch {
       continue;
     }
@@ -482,39 +481,40 @@ async function fetchCategoryPinOverpass(
 }
 
 // ─── Mapbox fallback ──────────────────────────────────────────────────────────────
+
 const MAPBOX_SEARCH_TERMS: Record<string, string[]> = {
-  healthcare: ['hospital', 'medical center', 'urgent care', 'clinic'],
-  education: ['school', 'university', 'public library'],
+  healthcare:     ['hospital', 'medical center', 'urgent care', 'clinic'],
+  education:      ['school', 'university', 'public library'],
   transportation: ['train station', 'transit center', 'bus station'],
-  public_safety: ['fire station', 'police station'],
-  environment: ['park', 'nature reserve', 'botanical garden'],
-  housing: ['housing authority', 'apartment complex', 'real estate'],
-  economy: ['bank', 'credit union', 'financial services'],
-  water: ['water district', 'water treatment plant', 'reservoir'],
-  government: ['city hall', 'municipal building', 'government center'],
-  civil_rights: ['courthouse', 'legal aid office', 'law office'],
-  family: ['community center', 'recreation center', 'ymca'],
-  immigration: ['immigration office', 'consulate', 'citizenship services'],
-  technology: ['tech company', 'data center', 'computer store'],
-  taxes: ['tax preparation', 'accounting office', 'cpa'],
+  public_safety:  ['fire station', 'police station'],
+  environment:    ['park', 'nature reserve', 'botanical garden'],
+  housing:        ['housing authority', 'apartment complex', 'real estate'],
+  economy:        ['bank', 'credit union', 'financial services'],
+  water:          ['water district', 'water treatment plant', 'reservoir'],
+  government:     ['city hall', 'municipal building', 'government center'],
+  civil_rights:   ['courthouse', 'legal aid office', 'law office'],
+  family:         ['community center', 'recreation center', 'ymca'],
+  immigration:    ['immigration office', 'consulate', 'citizenship services'],
+  technology:     ['tech company', 'data center', 'computer store'],
+  taxes:          ['tax preparation', 'accounting office', 'cpa'],
   foreign_policy: ['consulate', 'embassy', 'diplomatic mission'],
 };
 
 const MAPBOX_VALID_CATEGORIES: Record<string, string[]> = {
-  healthcare: ['hospital', 'medical', 'clinic', 'doctor', 'health', 'pharmacy', 'urgent'],
-  education: ['school', 'education', 'university', 'college', 'library'],
+  healthcare:     ['hospital', 'medical', 'clinic', 'doctor', 'health', 'pharmacy', 'urgent'],
+  education:      ['school', 'education', 'university', 'college', 'library'],
   transportation: ['transit', 'train', 'bus', 'rail', 'transport', 'station', 'airport'],
-  public_safety: ['fire', 'police', 'emergency', 'safety'],
-  environment: ['park', 'garden', 'nature', 'recreation'],
-  housing: ['real estate', 'apartment', 'housing', 'residential'],
-  economy: ['bank', 'financial', 'atm', 'insurance', 'credit union'],
-  water: ['water', 'utility'],
-  government: ['government', 'city hall', 'municipal', 'civic'],
-  civil_rights: ['court', 'legal', 'law', 'attorney'],
-  family: ['community', 'recreation', 'playground', 'childcare', 'ymca'],
-  immigration: ['embassy', 'consulate', 'immigration', 'diplomatic'],
-  technology: ['tech', 'computer', 'electronics', 'telecom'],
-  taxes: ['tax', 'accounting', 'financial', 'cpa'],
+  public_safety:  ['fire', 'police', 'emergency', 'safety'],
+  environment:    ['park', 'garden', 'nature', 'recreation'],
+  housing:        ['real estate', 'apartment', 'housing', 'residential'],
+  economy:        ['bank', 'financial', 'atm', 'insurance', 'credit union'],
+  water:          ['water', 'utility'],
+  government:     ['government', 'city hall', 'municipal', 'civic'],
+  civil_rights:   ['court', 'legal', 'law', 'attorney'],
+  family:         ['community', 'recreation', 'playground', 'childcare', 'ymca'],
+  immigration:    ['embassy', 'consulate', 'immigration', 'diplomatic'],
+  technology:     ['tech', 'computer', 'electronics', 'telecom'],
+  taxes:          ['tax', 'accounting', 'financial', 'cpa'],
   foreign_policy: ['embassy', 'consulate', 'diplomatic'],
 };
 
@@ -536,8 +536,10 @@ async function fetchCategoryPinMapboxFallback(
       url.searchParams.set('limit', '5');
       url.searchParams.set('types', 'poi');
       url.searchParams.set('access_token', token);
+
       const res = await fetch(url.toString());
       if (!res.ok) continue;
+
       const data = await res.json();
       const features: any[] = data?.features ?? [];
 
@@ -545,24 +547,28 @@ async function fetchCategoryPinMapboxFallback(
         const featureCats: string = (
           (feature.properties?.category ?? '') + ' ' + (feature.place_name ?? '')
         ).toLowerCase();
+
         if (validCats.length > 0) {
           const matches = validCats.some((vc) => featureCats.includes(vc));
           if (!matches) continue;
         }
+
         const fLat = feature.center[1];
         const fLon = feature.center[0];
         if (haversineMeters(lat, lng, fLat, fLon) > 15000) continue;
+
         return {
           name: feature.text ?? feature.place_name ?? term,
           lat: fLat,
           lon: fLon,
         };
       }
-    } catch (err){
+    } catch (err) {
       console.warn(`Overpass query failed for ${category}:`, err);
       continue;
     }
   }
+
   return null;
 }
 
@@ -581,6 +587,7 @@ async function reverseGeocode(
 }
 
 // ─── Geometric fallback (last resort) ────────────────────────────────────────────
+
 function fallbackPin(category: string, lat: number, lng: number, index: number): PinLocation {
   const angle = ((index * 137.5) % 360) * (Math.PI / 180);
   const radius = 0.005 + (index % 3) * 0.002;
@@ -592,6 +599,7 @@ function fallbackPin(category: string, lat: number, lng: number, index: number):
 }
 
 // ─── Orchestrator: fetch all pins for a ZIP's center coords ──────────────────────
+
 async function fetchAllPinsForArea(
   lat: number,
   lng: number,
@@ -628,10 +636,12 @@ async function fetchAllPinsForArea(
   const BATCH_SIZE = 3;
   for (let i = 0; i < categories.length; i += BATCH_SIZE) {
     const batch = categories.slice(i, i + BATCH_SIZE);
+
     const batchResults = await Promise.all(
       batch.map(async (cat, batchIdx) => {
         let pin = await fetchCategoryPinOverpass(cat, lat, lng);
         if (!pin) pin = await fetchCategoryPinMapboxFallback(cat, lat, lng, token);
+
         if (pin && !isValidPlaceName(pin.name)) {
           console.warn(`[CityMap] Skipping low-quality pin: "${pin.name}" for ${cat}`);
           pin = null; // Forces the orchestrator to treat this as a failed find
@@ -640,11 +650,13 @@ async function fetchAllPinsForArea(
         if (pin) {
           pin.address = await reverseGeocode(pin.lat, pin.lon, token);
         }
+
         done++;
         onProgress(done);
         return [cat, pin] as const;
       }),
     );
+
     for (const [cat, pin] of batchResults) {
       result[cat] = pin;
     }
@@ -654,10 +666,12 @@ async function fetchAllPinsForArea(
   result._version = PIN_CACHE_VERSION as any;
   pinCache[key] = result;
   try { localStorage.setItem(key, JSON.stringify(result)); } catch {}
+
   return result;
 }
 
 // ─── Impact Helpers ───────────────────────────────────────────────────────────────
+
 function getImpactLevel(score: number | undefined): 'positive' | 'negative' | 'neutral' {
   if (score === undefined) return 'neutral';
   if (score >= 0.6) return 'positive';
@@ -673,18 +687,15 @@ function getImpactNarrative(category: string, placeName: string, score?: number)
 }
 
 // ─── Styles Injection ─────────────────────────────────────────────────────────────
-// NOTE: Also add this to globals.css BEFORE Tailwind directives for max reliability:
-//   @import 'mapbox-gl/dist/mapbox-gl.css';
+
 function injectPillStyles() {
   const STYLE_ID = 'candid-pill-styles-v2';
   if (document.getElementById(STYLE_ID)) return;
+
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-    /* ═══ CRITICAL MAPBOX MARKER POSITIONING ═══
-       These rules MUST exist for markers to appear on the map.
-       They replicate what mapbox-gl.css provides, with !important
-       to survive Tailwind preflight and any global resets. */
+    /* ═══ CRITICAL MAPBOX MARKER POSITIONING ═══ */
     .mapboxgl-map {
       position: relative !important;
       overflow: hidden !important;
@@ -713,6 +724,7 @@ function injectPillStyles() {
     .mapboxgl-popup * {
       box-sizing: content-box;
     }
+
     /* ═══ PILL WRAPPER (Mapbox measures this for anchoring) ═══ */
     .candid-pill-wrap {
       display: flex;
@@ -748,7 +760,7 @@ function injectPillStyles() {
       background: rgba(253, 252, 248, 0.96);
       border: 1px solid rgba(0, 0, 0, 0.07);
       box-shadow:
-        0 1px 3px  rgba(0, 0, 0, 0.06),
+        0 1px 3px rgba(0, 0, 0, 0.06),
         0 8px 20px rgba(0, 0, 0, 0.09),
         0 20px 50px rgba(0, 0, 0, 0.08);
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -759,7 +771,7 @@ function injectPillStyles() {
     .candid-pill:hover {
       transform: scale(1.05);
       box-shadow:
-        0 2px 6px  rgba(0, 0, 0, 0.08),
+        0 2px 6px rgba(0, 0, 0, 0.08),
         0 12px 32px rgba(0, 0, 0, 0.12),
         0 28px 60px rgba(0, 0, 0, 0.10);
       z-index: 10;
@@ -776,6 +788,7 @@ function injectPillStyles() {
       text-overflow: ellipsis;
       color: #1C1917;
     }
+
     /* ═══ IMPACT STATE — subtle, static ═══ */
     .candid-pill[data-impact="positive"] {
       border-color: rgba(107, 158, 130, 0.45);
@@ -786,19 +799,22 @@ function injectPillStyles() {
     .candid-pill[data-impact="neutral"] {
       opacity: 0.88;
     }
+
     /* ═══ SELECTED STATE ═══ */
     .candid-pill.selected {
       box-shadow:
-        0 2px 8px  rgba(0, 0, 0, 0.12),
+        0 2px 8px rgba(0, 0, 0, 0.12),
         0 16px 40px rgba(0, 0, 0, 0.18),
-        0 0 0 2px  rgba(28, 25, 23, 0.14);
+        0 0 0 2px rgba(28, 25, 23, 0.14);
       transform: scale(1.08);
       z-index: 20;
     }
+
     /* ═══ CATEGORY VISIBILITY TOGGLE ═══ */
     .candid-pill-wrap[data-hidden="true"] {
       display: none !important;
     }
+
     /* ═══ POPUP STYLING ═══ */
     .candid-popup .mapboxgl-popup-content {
       background: rgba(30, 30, 36, 0.92);
@@ -826,6 +842,7 @@ function injectPillStyles() {
       color: #fff;
       font-weight: 700;
     }
+
     /* ═══ LOADING STATE ═══ */
     .candid-map-loading {
       position: absolute;
@@ -842,17 +859,75 @@ function injectPillStyles() {
     .candid-map-loading[data-done="true"] {
       opacity: 0;
     }
+
+    /* ═══ CATEGORY SWITCHER BAR ═══ */
+    .candid-switcher {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 64px;
+      z-index: 10;
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding: 3px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .candid-switcher::-webkit-scrollbar { display: none; }
+
+    .candid-switcher-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px 7px 10px;
+      border-radius: 20px;
+      border: 1.5px solid rgba(0,0,0,0.08);
+      background: #FDFCF8;
+      font-size: 11.5px;
+      font-weight: 600;
+      font-family: system-ui, -apple-system, sans-serif;
+      letter-spacing: 0.3px;
+      color: #78716C;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      user-select: none;
+    }
+    .candid-switcher-btn:hover:not([data-active="true"]) {
+      color: #1C1917;
+      border-color: rgba(0,0,0,0.14);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.09);
+      transform: scale(1.02);
+    }
+    .candid-switcher-btn[data-active="true"] {
+      color: #fff;
+      border-color: transparent;
+      box-shadow:
+        0 4px 18px rgba(0,0,0,0.18),
+        inset 0 0 0 1px rgba(255,255,255,0.2),
+        inset 0 1px 12px rgba(255,255,255,0.12);
+      transform: scale(1.06);
+    }
+    .candid-switcher-btn[data-disabled="true"] {
+      opacity: 0.38;
+      pointer-events: none;
+    }
   `;
+
   document.head.appendChild(style);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────────
+
 export default function CityMap({
   initialZip,
   measureMap,
   onPinClick,
+  onClearPin,
   selectedMeasureId,
-  activeCategories,
   impactScores,
   measureDescriptions,
 }: Props) {
@@ -873,6 +948,12 @@ export default function CityMap({
   const selectedElRef = useRef<HTMLElement | null>(null);
   const onPinClickRef = useRef(onPinClick);
 
+  // ─── NEW: Category Switcher State ──────────────────────────────────────────
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [resolvedPins, setResolvedPins] = useState<MapPin[]>([]);
+  const popupRef = useRef<any>(null);
+  const isFlyingRef = useRef(false); // distinguishes programmatic flyTo from manual zoom
+
   // Keep callback ref fresh
   useEffect(() => {
     onPinClickRef.current = onPinClick;
@@ -888,6 +969,124 @@ export default function CityMap({
       console.log(`[CityMap] Nuked ${keys.length} stale cached pin entries`);
     }
   }, []);
+
+  // ─── NEW: Category Switcher Click Handler ──────────────────────────────────
+  const handleCategoryClick = useCallback(
+    (category: string) => {
+      const map = mapRef.current;
+      if (!map) return;
+
+      const mapboxgl = require('mapbox-gl');
+
+      // Toggle off if clicking the same category
+      if (activeCategory === category) {
+        setActiveCategory(null);
+        onClearPin?.();
+
+        // Remove any open popup
+        if (popupRef.current) {
+          popupRef.current.remove();
+          popupRef.current = null;
+        }
+
+        // Show ALL markers again
+        markersRef.current.forEach(({ el }) => {
+          el.style.display = 'flex';
+        });
+
+        // Deselect pills
+        if (selectedElRef.current) {
+          selectedElRef.current.classList.remove('selected');
+          selectedElRef.current = null;
+        }
+
+        return;
+      }
+
+      // ── Activate new category — close any open info card first ──
+      onClearPin?.();
+      setActiveCategory(category);
+
+      // Find the resolved pin for this category
+      const pin = resolvedPins.find((p) => p.category === category);
+      if (!pin) return;
+
+      // Filter markers: only show the active category
+      markersRef.current.forEach(({ el, pill, category: cat }) => {
+        if (cat === category) {
+          el.style.display = 'flex';
+        } else {
+          el.style.display = 'none';
+          pill.classList.remove('selected');
+        }
+      });
+
+      // Close existing popup
+      if (popupRef.current) {
+        popupRef.current.remove();
+        popupRef.current = null;
+      }
+
+      // FlyTo the category's landmark
+      isFlyingRef.current = true;
+      map.flyTo({
+        center: [pin.lon, pin.lat],
+        zoom: 17.5,
+        pitch: 60,
+        bearing: -15,
+        speed: 1.2,
+        curve: 1.4,
+      });
+
+      // On arrival: open popup + select marker + notify parent
+      map.once('moveend', () => {
+        isFlyingRef.current = false;
+        if (!mapRef.current) return;
+
+        // Select the marker pill
+        const markerData = markersRef.current.find((m) => m.category === category);
+        if (markerData) {
+          if (selectedElRef.current) selectedElRef.current.classList.remove('selected');
+          markerData.pill.classList.add('selected');
+          selectedElRef.current = markerData.pill;
+        }
+
+        // Build & show popup
+        const score = impactScores?.[category];
+        const icon = PILL_ICONS[category] ?? '📋';
+        const color = PILL_COLORS[category] ?? PILL_COLORS.other;
+        const narrative = getImpactNarrative(category, pin.label, score);
+        const narrativeHTML = narrative.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        const catLabel = category.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+        const popupHTML = `
+          <div style="margin-bottom:8px;">
+            <span style="font-size:18px;margin-right:6px;">${icon}</span>
+            <span style="font-size:13px;font-weight:700;color:${color};">${catLabel}</span>
+          </div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;">${pin.label}</div>
+          ${pin.address ? `<div style="font-size:11px;color:#999;margin-bottom:10px;">${pin.address}</div>` : ''}
+          <div style="font-size:12.5px;line-height:1.6;color:#ddd;">${narrativeHTML}</div>
+        `;
+
+        const popup = new mapboxgl.Popup({
+          offset: [0, -20],
+          closeOnClick: false,
+          className: 'candid-popup',
+          maxWidth: '280px',
+        })
+          .setLngLat([pin.lon, pin.lat])
+          .setHTML(popupHTML)
+          .addTo(mapRef.current);
+
+        popupRef.current = popup;
+
+        // Notify parent
+        onPinClickRef.current(pin);
+      });
+    },
+    [activeCategory, resolvedPins, impactScores, onClearPin],
+  );
 
   // ── Effect A: Create Mapbox map once ─────────────────────────────────────────
   useEffect(() => {
@@ -913,13 +1112,15 @@ export default function CityMap({
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
 
     map.on('style.load', () => {
-      map.setConfigProperty('basemap', 'lightPreset', 'dusk'); 
+      map.setConfigProperty('basemap', 'lightPreset', 'dusk');
       map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
       map.setConfigProperty('basemap', 'show3dObjects', true);
       map.setConfigProperty('basemap', 'showTransitLabels', false);
     });
 
-    map.on('zoom', () => setMapZoom(map.getZoom()));
+    map.on('zoom', () => {
+      setMapZoom(map.getZoom());
+    });
 
     map.on('load', () => {
       mapLoadedRef.current = true;
@@ -957,9 +1158,6 @@ export default function CityMap({
         } catch {}
       });
 
-      // ── 3D buildings — warm cream ──
-      
-
       // ── DIAGNOSTIC: Verify marker CSS is working ──
       console.log('[CityMap] Map loaded. Checking marker CSS...');
       const testEl = document.createElement('div');
@@ -968,6 +1166,7 @@ export default function CityMap({
       const testMarker = new mapboxgl.Marker({ element: testEl })
         .setLngLat(map.getCenter())
         .addTo(map);
+
       requestAnimationFrame(() => {
         const markerDiv = testEl.closest('.mapboxgl-marker') as HTMLElement;
         if (markerDiv) {
@@ -985,6 +1184,7 @@ export default function CityMap({
     });
 
     return () => {
+      if (popupRef.current) popupRef.current.remove(); // ← NEW: cleanup popup on unmount
       map.remove();
       mapRef.current = null;
       mapLoadedRef.current = false;
@@ -995,6 +1195,7 @@ export default function CityMap({
   // ── Effect B: Geocode zip → Overpass POIs → Place animated pills ─────────────
   useEffect(() => {
     if (!initialZip || Object.keys(measureMap).length === 0) return;
+
     let cancelled = false;
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
@@ -1044,6 +1245,9 @@ export default function CityMap({
         })
         .filter(Boolean) as MapPin[];
 
+      // ──── NEW: Save resolved pins for category switcher ────
+      if (!cancelled) setResolvedPins(pins);
+
       // 5. Clear old markers
       markersRef.current.forEach(({ marker }) => marker.remove());
       markersRef.current = [];
@@ -1058,11 +1262,10 @@ export default function CityMap({
 
         pins.forEach((pin, i) => {
           if (!isFinite(pin.lat) || !isFinite(pin.lon)) return;
-
           if (!firstPinCoords) firstPinCoords = [pin.lon, pin.lat];
 
-          const color  = PILL_COLORS[pin.category] ?? PILL_COLORS.other;
-          const score  = impactScores?.[pin.category];
+          const color = PILL_COLORS[pin.category] ?? PILL_COLORS.other;
+          const score = impactScores?.[pin.category];
           const impact = getImpactLevel(score);
 
           // ── Outer wrapper: Mapbox uses this for anchor measurement ──
@@ -1081,10 +1284,6 @@ export default function CityMap({
           `;
 
           wrapper.appendChild(pill);
-
-          if (activeCategories && !activeCategories.has(pin.category)) {
-            wrapper.style.display = 'none';
-          }
 
           // ── Click → select + callback ──
           wrapper.addEventListener('click', () => {
@@ -1143,13 +1342,13 @@ export default function CityMap({
     };
   }, [initialZip, measureMap, impactScores]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Effect C: Toggle visibility when filters change ───────────────────────────
+  // ── Effect C: Toggle visibility based on activeCategory ───────────────────
   useEffect(() => {
     markersRef.current.forEach(({ el, category }) => {
-      const visible = !activeCategories || activeCategories.has(category);
+      const visible = activeCategory ? category === activeCategory : true;
       el.style.display = visible ? 'flex' : 'none';
     });
-  }, [activeCategories]);
+  }, [activeCategory]);
 
   // ── Effect D-extra: Sync selected pill with parent selectedMeasureId ──────────
   useEffect(() => {
@@ -1182,12 +1381,50 @@ export default function CityMap({
       {pinLoad.active && (
         <div className="candid-map-loading" data-done={String(!pinLoad.active)}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>🗺️</div>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>🗺</div>
             <div style={{ fontSize: '13px', color: '#888' }}>
               Finding places near you
               {pinLoad.total > 0 ? ` (${pinLoad.done}/${pinLoad.total})` : '…'}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ═══ NEW: Category Switcher Bar ═══ */}
+      {Object.keys(measureMap).length > 0 && (
+        <div className="candid-switcher">
+          {Object.keys(measureMap).map((cat) => {
+            const isActive = activeCategory === cat;
+            const hasPin = resolvedPins.some((p) => p.category === cat);
+            const color = PILL_COLORS[cat] ?? PILL_COLORS.other;
+            const label = cat.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+            return (
+              <button
+                key={cat}
+                className="candid-switcher-btn"
+                data-active={String(isActive)}
+                data-disabled={String(!hasPin)}
+                style={{
+                  background: isActive ? color : undefined,
+                  borderColor: isActive ? 'transparent' : undefined,
+                }}
+                onClick={() => hasPin && handleCategoryClick(cat)}
+                title={hasPin ? `Fly to ${label}` : `No ${label} location found nearby`}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: isActive ? 'rgba(255,255,255,0.85)' : `${color}70`,
+                    flexShrink: 0,
+                  }}
+                />
+                <span>{label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -1203,7 +1440,7 @@ export default function CityMap({
         }}
       />
 
-      {/* Zoom-out hint — fades once user zooms out past 14 */}
+      {/* Zoom-out hint — only appears when a category is active and user zooms out */}
       <div
         style={{
           position: 'absolute',
@@ -1212,7 +1449,9 @@ export default function CityMap({
           transform: 'translateX(-50%)',
           zIndex: 15,
           pointerEvents: 'none',
-          opacity: mapZoom >= 14 ? 1 : 0,
+          // Show when: category is active AND user has zoomed out below threshold
+          // AND we're not in the middle of a flyTo animation
+          opacity: activeCategory && mapZoom < 15 && !isFlyingRef.current ? 1 : 0,
           transition: 'opacity 0.5s ease',
           background: 'rgba(253, 252, 248, 0.72)',
           backdropFilter: 'blur(12px)',

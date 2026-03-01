@@ -1,5 +1,12 @@
 'use client';
 import { useState, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Syne } from 'next/font/google';
+import { Newsreader } from 'next/font/google';
+import { useUserProfile } from '@/hooks/useUserProfile';
+
+const syne      = Syne({ subsets: ['latin'], weight: ['800'], variable: '--font-syne' });
+const newsreader = Newsreader({ subsets: ['latin'], weight: ['400'], style: ['italic'], variable: '--font-newsreader' });
 
 const TOTAL = 1050; // $M
 const MIN   = 10;   // floor per category
@@ -11,35 +18,101 @@ type Persona = 'renter' | 'owner' | 'student';
 interface Cat {
   id: string;
   label: string;
-  icon: string;
   color: string;
+  tint: string;
   glow: string;
-  critical: number; // $M below which to pulse-warn
-  baseConf: number; // 0–1 base confidence score
+  critical: number;
+  baseConf: number;
 }
+
+// ── SVG Icons — SF Symbols-style, stroke-based ────────────────────────────────
+
+function IconShield({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 1.5L2.5 4v4c0 2.8 2.3 5.1 5.5 6 3.2-.9 5.5-3.2 5.5-6V4L8 1.5z" />
+    </svg>
+  );
+}
+
+function IconCross({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round">
+      <path d="M8 3.5v9M3.5 8h9" />
+    </svg>
+  );
+}
+
+function IconCap({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.5 6.5L8 3.5l6.5 3-6.5 3-6.5-3z" />
+      <path d="M4.5 8.2v3c0 1.2 1.6 2.3 3.5 2.3s3.5-1.1 3.5-2.3v-3" />
+      <line x1="14.5" y1="6.5" x2="14.5" y2="10" />
+    </svg>
+  );
+}
+
+function IconBus({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3.5" width="12" height="8" rx="1.5" />
+      <line x1="2" y1="7.5" x2="14" y2="7.5" />
+      <line x1="8" y1="3.5" x2="8" y2="7.5" />
+      <circle cx="4.5" cy="12.5" r="1" fill={color} stroke="none" />
+      <circle cx="11.5" cy="12.5" r="1" fill={color} stroke="none" />
+    </svg>
+  );
+}
+
+function IconHouse({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.5 7.5L8 2l6.5 5.5" />
+      <path d="M3 6.5V13.5h3.5v-3.5h3v3.5H13V6.5" />
+    </svg>
+  );
+}
+
+const CAT_ICON: Record<string, (color: string) => React.ReactNode> = {
+  public_safety:  color => <IconShield color={color} />,
+  healthcare:     color => <IconCross  color={color} />,
+  education:      color => <IconCap    color={color} />,
+  infrastructure: color => <IconBus    color={color} />,
+  housing:        color => <IconHouse  color={color} />,
+};
+
+// ── ZIP → State lookup ────────────────────────────────────────────────────────
+
+const ZIP_TO_STATE: Record<string, string> = {
+  '94601': 'California', '94102': 'California', '94105': 'California',
+  '90001': 'California', '90210': 'California', '92617': 'California',
+  '92697': 'California', '10001': 'New York',    '60601': 'Illinois',
+  '77001': 'Texas',      '85001': 'Arizona',     '19101': 'Pennsylvania',
+  '98101': 'Washington', '30301': 'Georgia',     '78201': 'Texas',
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CATS: Cat[] = [
-  { id: 'public_safety',  label: 'Public Safety',  icon: '🛡',  color: '#ef4444', glow: 'rgba(239,68,68,0.28)',   critical: 150, baseConf: 0.87 },
-  { id: 'healthcare',     label: 'Healthcare',     icon: '❤️',  color: '#ec4899', glow: 'rgba(236,72,153,0.28)',  critical: 120, baseConf: 0.82 },
-  { id: 'education',      label: 'Education',      icon: '📚',  color: '#6366f1', glow: 'rgba(99,102,241,0.28)',  critical: 150, baseConf: 0.91 },
-  { id: 'infrastructure', label: 'Infrastructure', icon: '🏗️',  color: '#f59e0b', glow: 'rgba(245,158,11,0.28)',  critical: 100, baseConf: 0.85 },
-  { id: 'housing',        label: 'Housing',        icon: '🏠',  color: '#8b5cf6', glow: 'rgba(139,92,246,0.28)',  critical: 70,  baseConf: 0.88 },
+  { id: 'public_safety',  label: 'Public Safety',  color: '#B87560', tint: 'rgba(184,117,96,0.10)',  glow: 'rgba(184,117,96,0.28)',  critical: 150, baseConf: 0.87 },
+  { id: 'healthcare',     label: 'Healthcare',     color: '#B5789C', tint: 'rgba(181,120,156,0.10)', glow: 'rgba(181,120,156,0.28)', critical: 120, baseConf: 0.82 },
+  { id: 'education',      label: 'Education',      color: '#C47B76', tint: 'rgba(196,123,118,0.10)', glow: 'rgba(196,123,118,0.28)', critical: 150, baseConf: 0.91 },
+  { id: 'infrastructure', label: 'Infrastructure', color: '#6A9EB8', tint: 'rgba(106,158,184,0.10)', glow: 'rgba(106,158,184,0.28)', critical: 100, baseConf: 0.85 },
+  { id: 'housing',        label: 'Housing',        color: '#8B7EC8', tint: 'rgba(139,126,200,0.10)', glow: 'rgba(139,126,200,0.28)', critical: 70,  baseConf: 0.88 },
 ];
 
 const BASE: Record<string, number> = {
   public_safety: 250, healthcare: 210, education: 280, infrastructure: 190, housing: 120,
 };
 
-const PERSONA_META: Record<Persona, { label: string; icon: string; location: string }> = {
-  renter:  { label: 'Renter',  icon: '🏢', location: 'Oakland, CA' },
-  owner:   { label: 'Owner',   icon: '🔑', location: 'San Francisco, CA' },
-  student: { label: 'Student', icon: '🎓', location: 'Berkeley, CA' },
+const PERSONA_META: Record<Persona, { label: string }> = {
+  renter:  { label: 'Renter'  },
+  owner:   { label: 'Owner'   },
+  student: { label: 'Student' },
 };
 
 // Plain-English messages keyed by [category][direction][persona]
-// Each array has two tiers: small delta (< 40M) and large delta (≥ 40M)
 const MSGS: Record<string, Record<'up' | 'down', Record<Persona, [string, string]>>> = {
   public_safety: {
     up: {
@@ -106,57 +179,60 @@ const MSGS: Record<string, Record<'up' | 'down', Record<Persona, [string, string
 // ── CSS injection ─────────────────────────────────────────────────────────────
 
 function injectStyles() {
-  if (typeof document === 'undefined' || document.getElementById('sim-styles')) return;
+  if (typeof document === 'undefined') return;
+  document.getElementById('sim-styles')?.remove(); // Remove stale version
+  if (document.getElementById('sim-styles-v2')) return;
   const s = document.createElement('style');
-  s.id = 'sim-styles';
+  s.id = 'sim-styles-v2';
   s.textContent = `
     .sim-slider {
       -webkit-appearance: none;
       appearance: none;
-      height: 6px;
+      height: 8px;
       border-radius: 9999px;
       outline: none;
       cursor: pointer;
       width: 100%;
     }
+    .sim-slider::-webkit-slider-runnable-track {
+      height: 8px;
+      border-radius: 9999px;
+      box-shadow: inset 0 1.5px 3px rgba(0,0,0,0.10);
+    }
     .sim-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       width: 22px;
       height: 22px;
+      margin-top: -7px;
       border-radius: 50%;
-      background: white;
+      background: #FDFCF8;
       cursor: pointer;
-      border: 2.5px solid currentColor;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.18);
+      border: 2px solid currentColor;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.14), 0 0 0 3px rgba(253,252,248,0.85);
       transition: transform 0.12s ease, box-shadow 0.12s ease;
     }
     .sim-slider:hover::-webkit-slider-thumb,
     .sim-slider:active::-webkit-slider-thumb {
       transform: scale(1.2);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.22);
+      box-shadow: 0 2px 14px rgba(0,0,0,0.22), 0 0 0 5px rgba(253,252,248,0.9);
     }
     .sim-slider::-moz-range-thumb {
       width: 22px;
       height: 22px;
       border-radius: 50%;
-      background: white;
+      background: #FDFCF8;
       cursor: pointer;
-      border: 2.5px solid currentColor;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.18);
+      border: 2px solid currentColor;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.14);
     }
     .sim-slider.critical::-webkit-slider-thumb {
       border-color: #ef4444 !important;
       animation: critPulse 1.1s ease-in-out infinite;
     }
     @keyframes critPulse {
-      0%, 100% { box-shadow: 0 0 0 0px rgba(239,68,68,0.35), 0 1px 6px rgba(0,0,0,0.18); }
-      50%       { box-shadow: 0 0 0 8px rgba(239,68,68,0.0),  0 1px 6px rgba(0,0,0,0.18); }
+      0%, 100% { box-shadow: 0 0 0 0px rgba(239,68,68,0.35), 0 1px 6px rgba(0,0,0,0.14); }
+      50%       { box-shadow: 0 0 0 8px rgba(239,68,68,0.0),  0 1px 6px rgba(0,0,0,0.14); }
     }
-    @keyframes feedSlideIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .feed-item { animation: feedSlideIn 0.22s ease-out both; }
   `;
   document.head.appendChild(s);
 }
@@ -177,7 +253,6 @@ function redistribute(cur: number[], idx: number, raw: number): number[] {
     const share = sum > 0 ? cur[i] / sum : 1 / others.length;
     res[i] = Math.max(MIN, cur[i] - delta * share);
   }
-  // Fix floating-point drift
   const drift = TOTAL - res.reduce((s, v) => s + v, 0);
   if (Math.abs(drift) > 0.01) {
     const big = others.reduce((mx, i) => res[i] > res[mx] ? i : mx, others[0]);
@@ -186,7 +261,7 @@ function redistribute(cur: number[], idx: number, raw: number): number[] {
   return res;
 }
 
-// ── Feed item type ─────────────────────────────────────────────────────────────
+// ── Feed item ─────────────────────────────────────────────────────────────────
 
 interface FeedItem {
   id: number;
@@ -195,17 +270,34 @@ interface FeedItem {
   dir: 'up' | 'down';
   delta: number;
   confidence: number;
-  persona: Persona;
 }
 let nextId = 0;
+
+// ── Style constants ───────────────────────────────────────────────────────────
+
+const WARM_BORDER  = '1px solid rgba(180,155,120,0.24)';
+const CARD_SHADOW  = '0 1px 3px rgba(60,40,20,0.04), 0 6px 18px rgba(60,40,20,0.07), 0 24px 48px rgba(60,40,20,0.04)';
+const CREAM        = '#FDFCF8';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ImpactSimulator() {
-  const [allocs, setAllocs]     = useState<number[]>(CATS.map(c => BASE[c.id]));
-  const [persona, setPersona]   = useState<Persona>('renter');
-  const [feed, setFeed]         = useState<FeedItem[]>([]);
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const { profile }                         = useUserProfile();
+  const [allocs, setAllocs]                 = useState<number[]>(CATS.map(c => BASE[c.id]));
+  const [feed, setFeed]                     = useState<FeedItem[]>([]);
+  const [activeIdx, setActiveIdx]           = useState<number | null>(null);
+  const [expandedCat, setExpandedCat]       = useState<string | null>(null);
+
+  // Derive persona from profile — no UI toggle
+  const persona: Persona =
+    profile?.housing_status === 'owner' ? 'owner' :
+    profile?.housing_status === 'other' ? 'student' : 'renter';
+
+  const userState = profile?.zip_code
+    ? (ZIP_TO_STATE[profile.zip_code] ?? 'California')
+    : 'your state';
+
+  const personaLabel = PERSONA_META[persona].label;
 
   useEffect(() => { injectStyles(); }, []);
 
@@ -222,7 +314,7 @@ export default function ImpactSimulator() {
     const confidence = Math.max(0.58, cat.baseConf - (Math.abs(delta) / TOTAL) * 0.28);
 
     setFeed(prev => [
-      { id: nextId++, cat, msg, dir, delta, confidence, persona },
+      { id: nextId++, cat, msg, dir, delta, confidence },
       ...prev.slice(0, 8),
     ]);
   }, [allocs, persona]);
@@ -230,6 +322,7 @@ export default function ImpactSimulator() {
   const reset = useCallback(() => {
     setAllocs(CATS.map(c => BASE[c.id]));
     setFeed([]);
+    setExpandedCat(null);
   }, []);
 
   const totalUsed = allocs.reduce((s, v) => s + v, 0);
@@ -237,103 +330,128 @@ export default function ImpactSimulator() {
   const activeCat = activeIdx !== null ? CATS[activeIdx] : null;
 
   return (
-    <div className="relative" style={{ background: '#f9f9f8', minHeight: '100vh' }}>
+    <div className={`${syne.variable} ${newsreader.variable} relative`} style={{ background: '#F9F7F2', minHeight: '100vh' }}>
 
-      {/* ── Ambient background glow ──────────────────────────────────────────── */}
+      {/* ── Digital Grid ───────────────────────────────────────────────────── */}
       <div
-        className="fixed inset-0 pointer-events-none overflow-hidden"
-        style={{ zIndex: 0 }}
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          zIndex: 0,
+          backgroundImage:
+            'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),' +
+            'linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
+          backgroundSize: '52px 52px',
+        }}
         aria-hidden
-      >
+      />
+
+      {/* ── Light Leaks ────────────────────────────────────────────────────── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }} aria-hidden>
+        {/* Blue — top right */}
         <div style={{
-          position: 'absolute',
-          width: '900px', height: '900px',
-          borderRadius: '50%',
-          backgroundColor: activeCat?.color ?? '#6366f1',
-          opacity: activeCat ? 0.055 : 0,
-          filter: 'blur(160px)',
-          top: '50%', left: '42%',
-          transform: 'translate(-50%, -50%)',
-          transition: 'background-color 0.5s ease, opacity 0.5s ease',
+          position: 'absolute', top: 0, right: 0, width: 600, height: 600, borderRadius: '50%',
+          background: 'radial-gradient(circle, #BFDBFE 0%, transparent 65%)',
+          transform: 'translate(25%, -25%)', opacity: 0.65,
+        }} />
+        {/* Pink — bottom left */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, width: 500, height: 500, borderRadius: '50%',
+          background: 'radial-gradient(circle, #FCA5A5 0%, transparent 65%)',
+          transform: 'translate(-25%, 25%)', opacity: 0.50,
+        }} />
+        {/* Lime — center */}
+        <div style={{
+          position: 'absolute', top: '35%', left: '12%', width: 380, height: 380, borderRadius: '50%',
+          background: 'radial-gradient(circle, #BBF7D0 0%, transparent 65%)',
+          opacity: 0.38,
+        }} />
+        {/* Transcript glow — behind right column, reacts to active slider */}
+        <div style={{
+          position: 'absolute', top: '18%', right: '5%', width: 440, height: 600, borderRadius: '50%',
+          background: `radial-gradient(circle, ${activeCat?.color ?? '#6366f1'}20 0%, transparent 65%)`,
+          filter: 'blur(40px)',
+          opacity: activeCat ? 1 : 0.45,
+          transition: 'background 0.5s ease, opacity 0.4s ease',
         }} />
       </div>
 
-      <div className="relative max-w-5xl mx-auto px-4 py-8" style={{ zIndex: 1 }}>
+      {/* ── Content ────────────────────────────────────────────────────────── */}
+      <div className="relative max-w-5xl mx-auto px-4 py-10" style={{ zIndex: 1 }}>
 
-        {/* ── Header ───────────────────────────────────────────────────────────── */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold tracking-[0.18em] text-zinc-400 uppercase mb-2">
-                Candid · Budget Simulator
-              </p>
-              <h1
-                className="text-4xl sm:text-5xl font-black leading-none tracking-tight text-zinc-900"
-                style={{ letterSpacing: '-0.025em' }}
-              >
-                YOUR BUDGET,{' '}
-                <span
-                  className="inline-block"
-                  style={{
-                    WebkitTextStroke: '2px #18181b',
-                    color: 'transparent',
-                  } as React.CSSProperties}
-                >
-                  RECODED.
-                </span>
-              </h1>
-              <p className="text-sm text-zinc-500 mt-3 max-w-md leading-relaxed">
-                Shift the $1.05B city budget and watch real-world consequences cascade —
-                personalized to how you actually live.
-              </p>
-            </div>
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
+        <div className="mb-10">
 
-            {/* Balance pill */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="text-right">
-                <p className="text-xs text-zinc-400 font-medium tabular-nums">
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#A8A09A', marginBottom: 14 }}>
+            Candid · Budget Simulator
+          </p>
+
+          {/* Hero title — Syne bold + Newsreader outlined italic */}
+          <h1 style={{
+            fontFamily: 'var(--font-syne)',
+            fontSize: 'clamp(32px, 5.5vw, 58px)',
+            fontWeight: 800,
+            lineHeight: 0.96,
+            letterSpacing: '-0.03em',
+            color: '#1C1917',
+            marginBottom: 20,
+          }}>
+            YOUR STATE'S BUDGET,{' '}
+            <span style={{
+              fontFamily: 'var(--font-newsreader)',
+              fontStyle: 'italic',
+              fontWeight: 400,
+              WebkitTextStroke: '1.5px #1C1917',
+              color: 'transparent',
+              letterSpacing: '-0.01em',
+            } as React.CSSProperties}>
+              recoded.
+            </span>
+          </h1>
+
+          {/* Contextual tag */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            background: CREAM,
+            border: WARM_BORDER,
+            borderRadius: 99,
+            padding: '5px 12px 5px 9px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+            marginBottom: 22,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', flexShrink: 0, boxShadow: '0 0 0 2px rgba(34,197,94,0.25)' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: '#6B6560', letterSpacing: '0.01em' }}>
+              Simulating for <strong style={{ color: '#1C1917' }}>{userState}</strong> based on your profile
+            </span>
+          </div>
+
+          {/* Balance bar */}
+          <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+            <p style={{ fontSize: 13.5, color: '#78716C', lineHeight: 1.65, maxWidth: 380 }}>
+              Shift the $1.05B state budget and watch real-world consequences cascade — pre-configured for you as a <strong style={{ color: '#1C1917' }}>{personaLabel}</strong>.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: 11, color: '#A8A09A', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
                   ${(totalUsed / 1000).toFixed(3)}B / $1.050B
                 </p>
-                <p className={`text-sm font-black tabular-nums ${balanced ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {balanced
-                    ? '✓ Balanced'
-                    : `⚠ ${totalUsed > TOTAL ? '+' : ''}${Math.round(totalUsed - TOTAL)}M deficit`}
+                <p style={{ fontSize: 13, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: balanced ? '#16a34a' : '#dc2626' }}>
+                  {balanced ? '✓ Balanced' : `⚠ ${totalUsed > TOTAL ? '+' : ''}${Math.round(totalUsed - TOTAL)}M`}
                 </p>
               </div>
               <button
                 onClick={reset}
-                className="px-3.5 py-1.5 text-xs font-bold text-zinc-600 border border-zinc-200 rounded-full hover:bg-zinc-100 transition-colors"
+                style={{
+                  padding: '7px 16px', fontSize: 11.5, fontWeight: 600,
+                  color: '#6B6560', borderRadius: 99,
+                  background: 'rgba(180,155,120,0.09)',
+                  border: WARM_BORDER,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 Reset
               </button>
-            </div>
-          </div>
-
-          {/* ── Persona switcher ─────────────────────────────────────────────── */}
-          <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-3">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex-shrink-0">
-              How this affects YOU →
-            </span>
-            <div className="flex items-center gap-2 flex-wrap">
-              {(Object.entries(PERSONA_META) as [Persona, typeof PERSONA_META[Persona]][]).map(([key, p]) => {
-                const active = persona === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setPersona(key)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-150"
-                    style={active
-                      ? { background: '#18181b', color: 'white', borderColor: '#18181b' }
-                      : { background: 'white', color: '#71717a', borderColor: '#e4e4e7' }}
-                  >
-                    <span>{p.icon}</span>
-                    <span>{p.label}</span>
-                    {active && (
-                      <span className="text-zinc-400 font-normal ml-0.5">· {p.location}</span>
-                    )}
-                  </button>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -343,7 +461,7 @@ export default function ImpactSimulator() {
 
           {/* ── Sliders ────────────────────────────────────────────────────────── */}
           <div className="lg:col-span-3 flex flex-col gap-3">
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#A8A09A', marginBottom: 4 }}>
               Budget Controls
             </p>
 
@@ -354,271 +472,331 @@ export default function ImpactSimulator() {
               const delta  = val - base;
               const isCrit = val < cat.critical;
               const isOn   = activeIdx === i;
+              const isExp  = expandedCat === cat.id;
+
+              // Message for the expanded detail view
+              const dir: 'up' | 'down' = delta >= 0 ? 'up' : 'down';
+              const pair = MSGS[cat.id][dir][persona];
+              const detailMsg = Math.abs(delta) >= 40 ? pair[1] : pair[0];
 
               return (
                 <div
                   key={cat.id}
-                  className="rounded-2xl border p-5 transition-all duration-200"
                   style={{
-                    background: 'rgba(255,255,255,0.92)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    borderColor: isOn
-                      ? `${cat.color}55`
+                    borderRadius: 16,
+                    background: CREAM,
+                    border: isCrit
+                      ? '1px solid rgba(239,68,68,0.4)'
+                      : isOn || isExp
+                      ? `1px solid ${cat.color}44`
+                      : WARM_BORDER,
+                    boxShadow: isOn || isExp
+                      ? `0 4px 24px ${cat.glow}, 0 1px 4px rgba(60,40,20,0.06)`
                       : isCrit
-                      ? 'rgba(239,68,68,0.35)'
-                      : 'rgba(0,0,0,0.06)',
-                    boxShadow: isOn
-                      ? `0 6px 36px ${cat.glow}`
-                      : isCrit
-                      ? '0 4px 20px rgba(239,68,68,0.14)'
-                      : '0 1px 8px rgba(0,0,0,0.05)',
+                      ? '0 4px 20px rgba(239,68,68,0.14), 0 1px 4px rgba(60,40,20,0.06)'
+                      : CARD_SHADOW,
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                    overflow: 'hidden',
                   }}
                 >
-                  {/* Row: icon + label + value */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                        style={{ backgroundColor: `${cat.color}18` }}
-                      >
-                        {cat.icon}
-                      </div>
-                      <div>
-                        <p className="text-xs font-black text-zinc-800 uppercase tracking-wide leading-none">
-                          {cat.label}
-                        </p>
-                        {isCrit && (
-                          <p className="text-xs text-red-500 font-semibold mt-0.5 leading-none">
-                            ⚠ Below critical threshold
+                  <div style={{ padding: '18px 20px 14px' }}>
+                    {/* Icon + label + value */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 10,
+                          background: `${cat.color}14`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {CAT_ICON[cat.id]?.(cat.color)}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 800, color: '#44403C', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>
+                            {cat.label}
                           </p>
+                          {isCrit && (
+                            <p style={{ fontSize: 10, color: '#ef4444', fontWeight: 600, marginTop: 3, lineHeight: 1 }}>
+                              ⚠ Below critical threshold
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {Math.abs(delta) >= 1 && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 99,
+                            background: delta > 0 ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.08)',
+                            color: delta > 0 ? '#059669' : '#dc2626',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}>
+                            {delta > 0 ? '+' : ''}${Math.round(delta)}M
+                          </span>
                         )}
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{
+                            fontSize: 20, fontWeight: 800, lineHeight: 1,
+                            fontVariantNumeric: 'tabular-nums',
+                            color: isOn ? cat.color : '#1C1917',
+                            transition: 'color 0.2s ease',
+                          }}>
+                            ${Math.round(val)}M
+                          </p>
+                          <p style={{ fontSize: 10, color: '#A8A09A', fontVariantNumeric: 'tabular-nums' }}>
+                            {pct.toFixed(1)}%
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      {Math.abs(delta) >= 1 && (
-                        <span
-                          className="text-xs font-black px-2 py-0.5 rounded-full tabular-nums"
-                          style={{
-                            background: delta > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
-                            color: delta > 0 ? '#059669' : '#dc2626',
-                          }}
-                        >
-                          {delta > 0 ? '+' : ''}${Math.round(delta)}M
+                    {/* Slider — dual-tone recessed track */}
+                    <input
+                      type="range"
+                      className={`sim-slider${isCrit ? ' critical' : ''}`}
+                      min={MIN}
+                      max={TOTAL - (CATS.length - 1) * MIN}
+                      step={5}
+                      value={Math.round(val)}
+                      onChange={e => handleSlider(i, Number(e.target.value))}
+                      onMouseDown={() => setActiveIdx(i)}
+                      onMouseUp={() => setActiveIdx(null)}
+                      onTouchStart={() => setActiveIdx(i)}
+                      onTouchEnd={() => setActiveIdx(null)}
+                      style={{
+                        background: isCrit
+                          ? `linear-gradient(to right, #ef4444 ${pct}%, rgba(239,68,68,0.12) ${pct}%)`
+                          : `linear-gradient(to right, ${cat.color} ${pct}%, ${cat.tint} ${pct}%)`,
+                        color: isCrit ? '#ef4444' : cat.color,
+                        accentColor: isCrit ? '#ef4444' : cat.color,
+                      }}
+                    />
+
+                    {/* Change vs baseline */}
+                    {Math.abs(delta) >= 1 && (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1, height: 3, background: 'rgba(180,155,120,0.14)', borderRadius: 99, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 99,
+                            width: `${Math.min(100, (Math.abs(delta) / base) * 100)}%`,
+                            background: delta > 0 ? '#10b981' : '#ef4444',
+                            transition: 'width 0.3s ease',
+                          }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums', color: delta > 0 ? '#059669' : '#dc2626' }}>
+                          {delta > 0 ? '▲' : '▼'} {Math.abs(Math.round((delta / base) * 100))}% vs baseline
                         </span>
-                      )}
-                      <div className="text-right">
-                        <p
-                          className="text-xl font-black tabular-nums leading-none"
-                          style={{ color: isOn ? cat.color : '#18181b' }}
-                        >
-                          ${Math.round(val)}M
-                        </p>
-                        <p className="text-xs text-zinc-400 tabular-nums">{pct.toFixed(1)}%</p>
                       </div>
-                    </div>
+                    )}
                   </div>
 
-                  {/* Slider */}
-                  <input
-                    type="range"
-                    className={`sim-slider${isCrit ? ' critical' : ''}`}
-                    min={MIN}
-                    max={TOTAL - (CATS.length - 1) * MIN}
-                    step={5}
-                    value={Math.round(val)}
-                    onChange={e => handleSlider(i, Number(e.target.value))}
-                    onMouseDown={() => setActiveIdx(i)}
-                    onMouseUp={() => setActiveIdx(null)}
-                    onTouchStart={() => setActiveIdx(i)}
-                    onTouchEnd={() => setActiveIdx(null)}
+                  {/* Details toggle — single-active-ID: clicking one closes all others */}
+                  <button
+                    onClick={() => setExpandedCat(prev => prev === cat.id ? null : cat.id)}
                     style={{
-                      background: isCrit
-                        ? `linear-gradient(to right, #ef4444 ${pct}%, rgba(239,68,68,0.15) ${pct}%)`
-                        : `linear-gradient(to right, ${cat.color} ${pct}%, rgba(0,0,0,0.08) ${pct}%)`,
-                      color: isCrit ? '#ef4444' : cat.color,
-                      accentColor: isCrit ? '#ef4444' : cat.color,
+                      width: '100%', padding: '9px 20px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: isExp ? `${cat.color}07` : 'rgba(180,155,120,0.04)',
+                      borderTop: '1px solid rgba(180,155,120,0.14)',
+                      cursor: 'pointer', border: 'none', outline: 'none',
+                      transition: 'background 0.15s',
                     }}
-                  />
+                  >
+                    <span style={{ fontSize: 11, fontWeight: 600, color: isExp ? cat.color : '#78716C', transition: 'color 0.15s' }}>
+                      {isExp ? 'Hide details' : 'See what this means for you'}
+                    </span>
+                    <motion.svg
+                      animate={{ rotate: isExp ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      width={12} height={12} fill="none"
+                      stroke={isExp ? cat.color : '#A8A09A'}
+                      strokeWidth={2.2} viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </motion.svg>
+                  </button>
 
-                  {/* Baseline change bar */}
-                  {Math.abs(delta) >= 1 && (
-                    <div className="mt-3 flex items-center gap-2.5">
-                      <div className="flex-1 h-1 bg-zinc-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{
-                            width: `${Math.min(100, (Math.abs(delta) / base) * 100)}%`,
-                            backgroundColor: delta > 0 ? '#10b981' : '#ef4444',
-                          }}
-                        />
-                      </div>
-                      <span
-                        className="text-xs font-bold tabular-nums flex-shrink-0"
-                        style={{ color: delta > 0 ? '#059669' : '#dc2626' }}
+                  {/* Expandable detail panel */}
+                  <AnimatePresence>
+                    {isExp && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.24, ease: 'easeOut' }}
+                        style={{ overflow: 'hidden' }}
                       >
-                        {delta > 0 ? '▲' : '▼'} {Math.abs(Math.round((delta / base) * 100))}% vs baseline
-                      </span>
-                    </div>
-                  )}
+                        <div style={{
+                          padding: '14px 20px 18px',
+                          background: `${cat.color}05`,
+                          borderTop: `2px solid ${cat.color}18`,
+                        }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: cat.color, marginBottom: 7 }}>
+                            {personaLabel} · {userState}
+                          </p>
+                          <p style={{ fontSize: 13, color: '#3C3530', lineHeight: 1.72, fontWeight: 500 }}>
+                            {detailMsg}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
           </div>
 
-          {/* ── Live Impact Transcript ──────────────────────────────────────────── */}
+          {/* ── Live Impact Transcript — sticky, glassmorphism ──────────────────── */}
           <div className="lg:col-span-2">
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2 lg:mt-0 mt-0">
-              Live Impact Transcript
-            </p>
+            <div style={{ position: 'sticky', top: 80 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#A8A09A', marginBottom: 8 }}>
+                Live Impact Transcript
+              </p>
 
-            <div
-              className="rounded-2xl border overflow-hidden"
-              style={{
-                background: 'rgba(255,255,255,0.92)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                borderColor: 'rgba(0,0,0,0.06)',
-                boxShadow: '0 1px 8px rgba(0,0,0,0.05)',
-              }}
-            >
-              {/* Panel header */}
-              <div
-                className="px-4 py-3 border-b flex items-center justify-between"
-                style={{ borderColor: 'rgba(0,0,0,0.06)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  <span className="text-xs font-bold text-zinc-700">Live</span>
+              <div style={{
+                borderRadius: 16,
+                background: 'rgba(253,252,248,0.72)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: WARM_BORDER,
+                boxShadow: '0 4px 24px rgba(60,40,20,0.08), 0 1px 3px rgba(60,40,20,0.04)',
+                overflow: 'hidden',
+              }}>
+                {/* Panel header */}
+                <div style={{
+                  padding: '12px 16px',
+                  borderBottom: '1px solid rgba(180,155,120,0.14)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#44403C' }}>Live</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      fontSize: 10.5, fontWeight: 700, padding: '3px 10px', borderRadius: 99,
+                      background: '#1C1917', color: CREAM,
+                    }}>
+                      {personaLabel} · {userState}
+                    </span>
+                    {feed.length > 0 && (
+                      <span style={{ fontSize: 11, color: '#A8A09A', fontVariantNumeric: 'tabular-nums' }}>
+                        {feed.length}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-xs font-bold px-2.5 py-0.5 rounded-full"
-                    style={{ background: '#18181b', color: 'white' }}
-                  >
-                    {PERSONA_META[persona].icon} {PERSONA_META[persona].label}
-                  </span>
-                  {feed.length > 0 && (
-                    <span className="text-xs text-zinc-400 tabular-nums">{feed.length}</span>
+
+                {/* Feed body */}
+                <div style={{ minHeight: 380, maxHeight: 560, overflowY: 'auto' }}>
+                  {feed.length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 280, gap: 12, padding: '0 28px' }}>
+                      <div style={{
+                        width: 48, height: 48, borderRadius: 14,
+                        background: 'rgba(180,155,120,0.10)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A8A09A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 4.9 11.9c-.6.6-1.4 1.4-1.4 2.6v.5H8.5v-.5c0-1.2-.8-2-1.4-2.6A7 7 0 0 1 12 2z" />
+                        </svg>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#57534E', marginBottom: 5 }}>No changes yet</p>
+                        <p style={{ fontSize: 12, color: '#A8A09A', lineHeight: 1.65 }}>
+                          Drag a slider to see personalized,<br />plain-English consequences
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <AnimatePresence initial={false}>
+                        {feed.map((entry, idx) => (
+                          <motion.div
+                            key={entry.id}
+                            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                            animate={{ opacity: idx > 3 ? 0.52 : 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                            transition={{ type: 'spring', stiffness: 280, damping: 26, delay: idx === 0 ? 0 : idx * 0.025 }}
+                            style={{
+                              padding: '13px 16px',
+                              borderBottom: '1px solid rgba(180,155,120,0.10)',
+                              background: idx === 0 ? `${entry.cat.color}07` : 'transparent',
+                            }}
+                          >
+                            {/* Entry header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              <div style={{
+                                width: 24, height: 24, borderRadius: 7,
+                                background: `${entry.cat.color}18`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0,
+                              }}>
+                                {CAT_ICON[entry.cat.id]?.(entry.cat.color)}
+                              </div>
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#44403C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                                {entry.cat.label}
+                              </span>
+                              <span style={{ fontSize: 11, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: entry.dir === 'up' ? '#059669' : '#dc2626' }}>
+                                {entry.dir === 'up' ? '↑' : '↓'} ${Math.abs(Math.round(entry.delta))}M
+                              </span>
+                            </div>
+
+                            {/* Message */}
+                            <p style={{ fontSize: 12.5, color: '#3C3530', lineHeight: 1.7, fontWeight: 500 }}>
+                              {entry.msg}
+                            </p>
+
+                            {/* Confidence bar */}
+                            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, height: 3, background: 'rgba(180,155,120,0.12)', borderRadius: 99, overflow: 'hidden' }}>
+                                <div style={{
+                                  height: '100%', borderRadius: 99,
+                                  width: `${Math.round(entry.confidence * 100)}%`,
+                                  background: `linear-gradient(90deg, ${entry.cat.color}88, ${entry.cat.color})`,
+                                  transition: 'width 0.5s ease',
+                                }} />
+                              </div>
+                              <span style={{ fontSize: 10, color: '#A8A09A', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                                {Math.round(entry.confidence * 100)}%
+                              </span>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
                   )}
                 </div>
-              </div>
-
-              {/* Feed body */}
-              <div
-                className="overflow-y-auto"
-                style={{ minHeight: '380px', maxHeight: '560px' }}
-              >
-                {feed.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 gap-3 px-6">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-                      style={{ background: '#f4f4f5' }}
-                    >
-                      💡
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-zinc-600">No changes yet</p>
-                      <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                        Drag a slider to see personalized,<br />plain-English consequences
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col">
-                    {feed.map((entry, idx) => (
-                      <div
-                        key={entry.id}
-                        className="feed-item px-4 py-4 border-b last:border-b-0"
-                        style={{
-                          borderColor: 'rgba(0,0,0,0.04)',
-                          background: idx === 0 ? `${entry.cat.color}08` : 'transparent',
-                          opacity: idx > 3 ? 0.6 : 1,
-                        }}
-                      >
-                        {/* Entry header row */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <div
-                            className="w-6 h-6 rounded-lg flex items-center justify-center text-xs flex-shrink-0"
-                            style={{ backgroundColor: `${entry.cat.color}22` }}
-                          >
-                            {entry.cat.icon}
-                          </div>
-                          <span className="text-xs font-black text-zinc-700 uppercase tracking-wide">
-                            {entry.cat.label}
-                          </span>
-                          <span
-                            className="text-xs font-black tabular-nums"
-                            style={{ color: entry.dir === 'up' ? '#059669' : '#dc2626' }}
-                          >
-                            {entry.dir === 'up' ? '↑' : '↓'} ${Math.abs(Math.round(entry.delta))}M
-                          </span>
-                        </div>
-
-                        {/* Persona context */}
-                        <p className="text-xs font-semibold text-zinc-400 mb-1.5">
-                          As a {PERSONA_META[entry.persona].label} in {PERSONA_META[entry.persona].location}:
-                        </p>
-
-                        {/* Plain-English message */}
-                        <p className="text-sm text-zinc-800 leading-relaxed font-medium">
-                          {entry.msg}
-                        </p>
-
-                        {/* Confidence score */}
-                        <div className="mt-3 flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${Math.round(entry.confidence * 100)}%`,
-                                background: `linear-gradient(90deg, ${entry.cat.color}99, ${entry.cat.color})`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs text-zinc-400 font-bold tabular-nums flex-shrink-0">
-                            {Math.round(entry.confidence * 100)}% confidence
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Allocation breakdown bar ──────────────────────────────────────────── */}
-        <div
-          className="mt-5 rounded-2xl border p-5"
-          style={{
-            background: 'rgba(255,255,255,0.92)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            borderColor: 'rgba(0,0,0,0.06)',
-            boxShadow: '0 1px 8px rgba(0,0,0,0.05)',
-          }}
-        >
-          <p className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">
+        {/* ── Allocation Breakdown ──────────────────────────────────────────────── */}
+        <div style={{
+          marginTop: 20, borderRadius: 16,
+          background: CREAM,
+          border: WARM_BORDER,
+          padding: '20px 22px',
+          boxShadow: CARD_SHADOW,
+        }}>
+          <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#A8A09A', marginBottom: 14 }}>
             Allocation Breakdown
           </p>
 
           {/* Segmented bar */}
-          <div className="flex h-4 rounded-full overflow-hidden" style={{ gap: '2px' }}>
+          <div style={{ display: 'flex', height: 12, borderRadius: 99, overflow: 'hidden', gap: 2 }}>
             {CATS.map((cat, i) => (
               <div
                 key={cat.id}
-                className="rounded-full transition-all duration-300"
                 title={`${cat.label}: $${Math.round(allocs[i])}M`}
                 style={{
                   width: `${(allocs[i] / TOTAL) * 100}%`,
-                  backgroundColor: cat.color,
-                  opacity: activeIdx !== null && activeIdx !== i ? 0.45 : 1,
+                  background: cat.color,
+                  borderRadius: 99,
+                  opacity: activeIdx !== null && activeIdx !== i ? 0.32 : 1,
                   transition: 'width 0.3s ease, opacity 0.2s ease',
                   minWidth: allocs[i] > 0 ? '4px' : '0',
                 }}
@@ -627,21 +805,18 @@ export default function ImpactSimulator() {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginTop: 14 }}>
             {CATS.map((cat, i) => {
               const delta = allocs[i] - BASE[cat.id];
               return (
-                <div key={cat.id} className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                  <span className="text-xs text-zinc-500">{cat.label}</span>
-                  <span className="text-xs font-black text-zinc-900 tabular-nums">
+                <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11.5, color: '#78716C' }}>{cat.label}</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: '#1C1917', fontVariantNumeric: 'tabular-nums' }}>
                     {((allocs[i] / TOTAL) * 100).toFixed(1)}%
                   </span>
                   {Math.abs(delta) >= 1 && (
-                    <span
-                      className="text-xs font-bold tabular-nums"
-                      style={{ color: delta > 0 ? '#059669' : '#dc2626' }}
-                    >
+                    <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: delta > 0 ? '#059669' : '#dc2626' }}>
                       ({delta > 0 ? '+' : ''}{Math.round(delta)}M)
                     </span>
                   )}
@@ -650,6 +825,7 @@ export default function ImpactSimulator() {
             })}
           </div>
         </div>
+
       </div>
     </div>
   );

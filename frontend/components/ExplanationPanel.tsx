@@ -10,11 +10,11 @@ interface Props {
 export function ExplanationPanel({ data, onCitationClick }: Props) {
   return (
     <div className="flex flex-col gap-4">
-      {/* Plain English */}
+      {/* In Simple Terms */}
       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-2 text-blue-700">
           <BookOpen className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-wide">Plain English</span>
+          <span className="text-xs font-semibold uppercase tracking-wide">In Simple Terms</span>
         </div>
         <p className="text-zinc-800 leading-relaxed">{data.plain_english_summary}</p>
       </div>

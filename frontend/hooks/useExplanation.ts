@@ -4,7 +4,7 @@ import { ExplainResponse, UserProfile } from '@/lib/types';
 
 export function useExplanation(measureId: string, measureText: string, user: UserProfile | null, measureTitle?: string) {
   return useSWR<ExplainResponse>(
-    user ? ['explain', measureId, user.zip_code, user.housing_status] : null,
+    user && measureId ? ['explain', measureId, user.zip_code, user.housing_status] : null,
     async () => {
       const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/explain`, {
         method: 'POST',
