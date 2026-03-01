@@ -60,110 +60,72 @@ function _saveToStorage(key: string, data: unknown) {
   try { localStorage.setItem('pins_' + key, JSON.stringify(data)); } catch { /**/ }
 }
 
-// ─── Category → Geocoding search terms ─────────────────────────────────────────
-const CATEGORY_SEARCH_TERMS: Record<string, string[]> = {
-  water:          ["water treatment plant", "reservoir", "water district"],
-  environment:    ["park", "nature reserve", "botanical garden"],
-  transportation: ["transit station", "bus station", "train station"],
-  housing:        ["apartment complex", "affordable housing", "real estate office"],
-  economy:        ["bank", "business center", "chamber of commerce"],
-  civil_rights:   ["courthouse", "legal aid", "civil rights office"],
-  government:     ["city hall", "government office", "municipal building"],
-  public_safety:  ["police station", "fire station", "emergency services"],
-  education:      ["school", "university", "library"],
-  healthcare:     ["hospital", "medical center", "clinic"],
-  family:         ["community center", "playground", "daycare"],
-  immigration:    ["immigration office", "consulate", "citizenship services"],
-  technology:     ["tech company", "innovation center", "computer store"],
-  taxes:          ["tax office", "accounting firm", "IRS office"],
-  foreign_policy: ["embassy", "consulate general", "international center"],
-};
-
-const ALL_CATEGORIES = Object.keys(CATEGORY_SEARCH_TERMS);
-
-type PinLocation = { name: string; lat: number; lon: number };
-type PinMap = Record<string, PinLocation>;
-
-const pinCache: Record<string, PinMap> = {};
-
-function cacheKey(lat: number, lng: number): string {
-  return `pins_${lat.toFixed(3)}_${lng.toFixed(3)}`;
-}
-
-async function fetchCategoryPin(
-  category: string,
+async function fetchAllPinsForArea(
   lat: number,
   lng: number,
-  token: string
-): Promise<PinLocation | null> {
-  const terms = CATEGORY_SEARCH_TERMS[category] ?? [category];
-  for (const term of terms) {
-    try {
-      const url = new URL(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(term)}.json`
-      );
-      url.searchParams.set("proximity", `${lng},${lat}`);
-      url.searchParams.set("limit", "1");
-      url.searchParams.set("types", "poi");
-      url.searchParams.set("access_token", token);
-      const res = await fetch(url.toString());
-      if (!res.ok) continue;
-      const data = await res.json();
-      const feature = data?.features?.[0];
-      if (feature) {
-        return {
-          name: feature.text ?? feature.place_name ?? term,
-          lat: feature.center[1],
-          lon: feature.center[0],
-        };
-      }
-    } catch {
-      continue;
-    }
+): Promise<Record<string, {name: string; lat: number; lon: number}>> {
+
+  const cacheKey = lat.toFixed(2) + ',' + lng.toFixed(2);
+  if (_pinsCache[cacheKey] && Object.keys(_pinsCache[cacheKey]).length > 0)
+    return _pinsCache[cacheKey];
+  const stored = _loadFromStorage(cacheKey);
+  if (stored && Object.keys(stored).length > 0) {
+    _pinsCache[cacheKey] = stored;
+    return stored;
   }
-  return null;
-}
 
-function fallbackPin(category: string, lat: number, lng: number): PinLocation {
-  const index = ALL_CATEGORIES.indexOf(category);
-  const angle = ((index * 137.5) % 360) * (Math.PI / 180);
-  const radius = 0.006 + (index % 3) * 0.003;
-  return {
-    name: category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-    lat: lat + radius * Math.cos(angle),
-    lon: lng + radius * Math.sin(angle),
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
+
+  const SEARCHES: Record<string, {query:string; dLat:number; dLng:number}> = {
+    water:          { query:'water treatment plant', dLat:  0.014, dLng:  0.010 },
+    environment:    { query:'nature park',           dLat: -0.014, dLng:  0.010 },
+    transportation: { query:'train station',         dLat:  0.010, dLng: -0.014 },
+    housing:        { query:'apartment complex',     dLat: -0.010, dLng: -0.014 },
+    economy:        { query:'shopping district',     dLat:  0.018, dLng:  0.002 },
+    civil_rights:   { query:'courthouse',            dLat: -0.018, dLng:  0.002 },
+    government:     { query:'city hall',             dLat:  0.002, dLng:  0.018 },
+    public_safety:  { query:'fire station',          dLat:  0.010, dLng:  0.010 },
+    education:      { query:'public library',        dLat: -0.010, dLng:  0.010 },
+    healthcare:     { query:'hospital',              dLat:  0.010, dLng: -0.010 },
+    family:         { query:'community park',        dLat: -0.010, dLng: -0.010 },
+    immigration:    { query:'community center',      dLat:  0.016, dLng:  0.006 },
+    technology:     { query:'university',            dLat: -0.016, dLng:  0.006 },
+    taxes:          { query:'government office',     dLat:  0.006, dLng:  0.016 },
+    foreign_policy: { query:'convention center',     dLat: -0.006, dLng:  0.016 },
   };
-}
 
-async function fetchAllPinsForArea(lat: number, lng: number): Promise<PinMap> {
-  const key = cacheKey(lat, lng);
-  if (pinCache[key]) return pinCache[key];
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      const parsed: PinMap = JSON.parse(stored);
-      if (Object.keys(parsed).length === ALL_CATEGORIES.length) {
-        pinCache[key] = parsed;
-        return parsed;
+  const result: Record<string, {name:string; lat:number; lon:number}> = {};
+
+  await Promise.all(
+    Object.entries(SEARCHES).map(async ([cat, { query, dLat, dLng }]) => {
+      const searchLat = lat + dLat;
+      const searchLng = lng + dLng;
+      try {
+        const url =
+          'https://api.mapbox.com/geocoding/v5/mapbox.places/' +
+          encodeURIComponent(query) +
+          '.json?proximity=' + searchLng + ',' + searchLat +
+          '&access_token=' + token +
+          '&limit=1&country=us&types=poi,address';
+        const res = await fetch(url);
+        const data = await res.json() as {
+          features: Array<{ text: string; center: [number, number] }>;
+        };
+        const feat = data.features?.[0];
+        result[cat] = feat
+          ? { name: feat.text, lat: feat.center[1], lon: feat.center[0] }
+          : { name: query, lat: searchLat, lon: searchLng };
+      } catch {
+        result[cat] = { name: query, lat: lat + dLat, lon: lng + dLng };
       }
-    }
-  } catch {}
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
-  const result: PinMap = {};
-  const entries = await Promise.all(
-    ALL_CATEGORIES.map(async (category) => {
-      const pin = await fetchCategoryPin(category, lat, lng, token);
-      return [category, pin] as const;
     })
   );
-  for (const [category, pin] of entries) {
-    result[category] = pin ?? fallbackPin(category, lat, lng);
-  }
-  pinCache[key] = result;
-  try { localStorage.setItem(key, JSON.stringify(result)); } catch {}
+
+  console.log('📍 Pins ready:', Object.keys(result).length, result);
+  _pinsCache[cacheKey] = result;
+  _saveToStorage(cacheKey, result);
   return result;
 }
-
 
 export default function CityMap({ initialZip, measureMap, onPinClick, activeCategories }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -171,10 +133,6 @@ export default function CityMap({ initialZip, measureMap, onPinClick, activeCate
   const mapRef = useRef<any>(null);
   const mapLoadedRef = useRef(false);
   const markersRef = useRef<Array<{ el: HTMLElement; category: string; marker: { remove: () => void } }>>([])
-  const [pinLoad, setPinLoad] = useState({ active: false, done: 0, total: 0 });
-  const selectedElRef = useRef<HTMLElement | null>(null);
-  const popupRef = useRef<any>(null);
-  const onPinClickRef = useRef(onPinClick);
 function injectPillStyles() {
   if (document.getElementById('map-pill-styles')) return;
   const style = document.createElement('style');
@@ -215,9 +173,6 @@ function injectPillStyles() {
   document.head.appendChild(style);
 }
 
-  // ── Effect A: create Mapbox map once ──────────────────────────────────────
-  useEffect(() => {
-    if (!containerRef.current) return;
     const mapboxgl = require('mapbox-gl');
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
     injectPillStyles();

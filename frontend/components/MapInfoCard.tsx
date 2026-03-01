@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { MapPin } from '@/lib/types';
+import { useExplanation } from '@/hooks/useExplanation';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface Props {
   pin: MapPin | null;
@@ -29,6 +31,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function MapInfoCard({ pin, onClose }: Props) {
   const router = useRouter();
   const [citationsOpen, setCitationsOpen] = useState(false);
+  const { profile } = useUserProfile();
+  const { data: explanation, isLoading: explainLoading } = useExplanation(
+    pin?.measure_id ?? '',
+    '',
+    pin ? profile : null,
+    pin?.label,
+  );
 
   function handleViewMeasure() {
     if (!pin) return;
@@ -92,12 +101,14 @@ export function MapInfoCard({ pin, onClose }: Props) {
               </div>
 
               {/* What this means for you */}
-              {pin.address && (
+              {(explanation?.personal_impact_statement || pin.address) && (
                 <div className="bg-zinc-50 rounded-2xl px-4 py-3 mb-4">
                   <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
                     What this means here
                   </p>
-                  <p className="text-sm text-zinc-800 font-medium leading-relaxed">{pin.address}</p>
+                  <p className="text-sm text-zinc-800 font-medium leading-relaxed">
+                    {explanation?.personal_impact_statement ?? pin.address}
+                  </p>
                 </div>
               )}
 

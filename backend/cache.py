@@ -1,3 +1,4 @@
+from typing import Optional
 import time
 import json
 import os
@@ -12,7 +13,7 @@ def _cache_path(key: str) -> str:
     return os.path.join(CACHE_DIR, f"{hashed}.json")
 
 
-def get_cache(key: str) -> str | None:
+def get_cache(key: str) -> Optional[str]:
     path = _cache_path(key)
     try:
         with open(path, "r") as f:
