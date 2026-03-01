@@ -37,8 +37,8 @@ const FEATURES = [
   },
   {
     icon: DollarSign,
-    title: 'Budget in Plain English',
-    desc: 'Not "12% citywide" — "$340/year for renters in your ZIP code." Real dollar estimates for your actual household.',
+    title: 'Budget in Simple Terms',
+    desc: 'Not "12% statewide" — "$340/year for renters in your ZIP code." Real dollar estimates for your actual household.',
     color: '#16A34A',
     bg: '#F0FDF4',
     dot: 'bg-green-500',
@@ -46,7 +46,7 @@ const FEATURES = [
   {
     icon: MapPin,
     title: 'Your Neighborhood, Live',
-    desc: 'A 3D city map pins every policy to the real streets it affects. See exactly which blocks change and how.',
+    desc: 'A 3D map pins every state policy to the real streets it affects. See exactly which blocks change and how.',
     color: '#D97706',
     bg: '#FFFBEB',
     dot: 'bg-yellow-500',
@@ -81,6 +81,7 @@ const PERSONAS = [
     label: 'Renter · Oakland · $65k',
     impact: '−$340/yr',
     positive: false,
+    summary: 'Measure J authorizes $650M in bonds for new BART stations, expanded bus routes, and bike lanes across three districts. Bonds repaid via a small property tax increase over 30 years.',
     statement: 'This measure increases your property tax base, which Oakland landlords can legally pass through as rent increases of up to $28/month.',
     confidence: 87,
   },
@@ -88,6 +89,7 @@ const PERSONAS = [
     label: 'Owner · San Francisco · $145k',
     impact: '+$120/yr',
     positive: true,
+    summary: 'Measure J authorizes $650M in bonds for new BART stations, expanded bus routes, and bike lanes across three districts. Bonds repaid via a small property tax increase over 30 years.',
     statement: 'As a homeowner, you benefit from infrastructure improvements funded by this measure — estimated to raise property values 2–4% in your district.',
     confidence: 91,
   },
@@ -95,6 +97,7 @@ const PERSONAS = [
     label: 'Renter · Los Angeles · $38k',
     impact: '−$680/yr',
     positive: false,
+    summary: 'Measure J authorizes $650M in bonds for new LA Metro lines, expanded bus routes, and bike lanes across three districts. Bonds repaid via a small property tax increase over 30 years.',
     statement: 'Lower-income renters bear a disproportionate share of this measure\'s costs. Your bracket is most affected by indirect cost pass-throughs.',
     confidence: 83,
   },
@@ -234,11 +237,20 @@ function DemoMockup() {
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-3">
             <div className="flex items-center gap-2 mb-2">
               <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-              <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Plain English</span>
+              <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider">In Simple Terms</span>
             </div>
-            <p className="text-sm text-zinc-700 leading-relaxed">
-              Measure J authorizes $650M in bonds for new BART stations, expanded bus routes, and bike lanes across three districts. Bonds repaid via a small property tax increase over 30 years.
-            </p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={persona}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25 }}
+                className="text-sm text-zinc-700 leading-relaxed"
+              >
+                {PERSONAS[persona].summary}
+              </motion.p>
+            </AnimatePresence>
           </div>
 
           <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-3">
@@ -324,7 +336,7 @@ export default function Home() {
             className="text-5xl md:text-7xl lg:text-[82px] font-black leading-[0.92] tracking-[-0.04em] text-zinc-900 max-w-4xl mb-6"
             style={{ fontFamily: 'var(--font-syne)' }}
           >
-            YOUR BALLOT,{' '}
+            WHAT'S ON{' '}
             <span
               style={{
                 fontFamily: 'var(--font-newsreader)',
@@ -334,9 +346,8 @@ export default function Home() {
                 letterSpacing: '-0.01em',
               }}
             >
-              decoded
-            </span>{' '}
-            FOR YOUR LIFE.
+              your ballot
+            </span>
           </motion.h1>
 
           <motion.p
@@ -345,7 +356,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="text-zinc-500 text-lg md:text-xl max-w-xl leading-relaxed mb-10"
           >
-            Plain-English explanations, personalized to who you are. Grounded in 30,000+ real legislation documents.
+            Simple explanations, personalized to who you are. Grounded in 30,000+ real legislation documents.
           </motion.p>
 
           <motion.div
@@ -358,7 +369,7 @@ export default function Home() {
               href="/onboarding"
               className="px-8 py-3.5 rounded-full font-semibold text-white text-sm bg-zinc-900 hover:bg-zinc-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
             >
-              See My Ballot →
+              My Races →
             </Link>
             <a
               href="#features"

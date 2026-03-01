@@ -18,7 +18,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
     <div className="bg-white border border-zinc-200 rounded-xl p-3 shadow text-xs">
       <p className="font-semibold mb-1 capitalize">{String(label).replace('_', ' ')}</p>
       {personal && <p>{formatDollar(personal.value)} for you</p>}
-      {citywide && <p>{citywide.value > 0 ? '+' : ''}{(isFinite(citywide.value) ? citywide.value : 0).toFixed(1)}% citywide</p>}
+      {citywide && <p>{citywide.value > 0 ? '+' : ''}{(isFinite(citywide.value) ? citywide.value : 0).toFixed(1)}% statewide</p>}
     </div>
   );
 }
@@ -38,11 +38,11 @@ export function BudgetChart({ shifts }: Props) {
         <BarChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
           <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={v => String(v).replace('_', ' ')} />
           <YAxis yAxisId="left" tick={{ fontSize: 11 }} label={{ value: 'Your impact $', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
-          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} label={{ value: 'City-wide %', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
+          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} label={{ value: 'State-wide %', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
           <Tooltip content={<CustomTooltip />} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <Bar yAxisId="left" dataKey="personal_annual_usd" name="Your impact" fill="#6366f1" radius={[4, 4, 0, 0]} />
-          <Bar yAxisId="right" dataKey="delta_pct" name="City-wide %" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="right" dataKey="delta_pct" name="State-wide %" fill="#94a3b8" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
