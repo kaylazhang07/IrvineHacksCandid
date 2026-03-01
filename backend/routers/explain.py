@@ -1,13 +1,12 @@
 import re
 from fastapi import APIRouter
 from models import ExplainRequest, ExplainResponse, Citation
-from rag.retrieve import retrieve_chunks
+from rag.retrieve import retrieve_chunks, get_collection
 from rag.rerank import rerank_chunks
 from rag.generate import generate_explanation
 from ml.predict import predict_budget_shifts
 from cache import get_cache, set_cache
 from data.zip_coords import zip_to_state, zip_to_coords
-from routers.measures import SAMPLE_MEASURES
 import json
 
 router = APIRouter()
@@ -39,9 +38,26 @@ def _fix_source_url(url: str) -> str:
 
 
 def _lookup_measure(measure_id: str) -> dict | None:
-    for m in SAMPLE_MEASURES:
-        if m["measure_id"] == measure_id:
-            return m
+    try:
+        collection = get_collection()
+        results = collection.get(
+            where={"measure_id": measure_id},
+            limit=1,
+            include=["metadatas", "documents"],
+        )
+        if results and results["metadatas"]:
+            meta = results["metadatas"][0]
+            doc = results["documents"][0] if results.get("documents") else ""
+            chunk_text = meta.get("chunk_text", doc or "")
+            title = chunk_text.strip()[:200]
+            return {
+                "measure_id": measure_id,
+                "measure_text": chunk_text,
+                "title": title,
+                "sources": [],
+            }
+    except Exception:
+        pass
     return None
 
 
