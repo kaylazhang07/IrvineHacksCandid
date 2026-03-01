@@ -66,6 +66,9 @@ def retrieve_chunks(
                 "source_url": meta.get("source_url", ""),
                 "score": max(score, 0.0),
                 "category": meta.get("category", "other"),
+                "state": meta.get("state", ""),
+                "measure_id": meta.get("measure_id", ""),
+                "jurisdiction": meta.get("jurisdiction", ""),
             })
 
     return chunks
