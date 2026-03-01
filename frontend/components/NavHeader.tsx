@@ -53,7 +53,7 @@ export default function NavHeader() {
 
   const navLinks = [
     { href: '/', label: 'Home' },
-    { href: '/ballot', label: 'Ballot' },
+    { href: hasProfile ? '/ballot' : '/onboarding', label: 'Ballot' },
     { href: '/map', label: 'Map' },
     { href: '/simulator', label: 'Simulate' },
   ];
@@ -72,10 +72,12 @@ export default function NavHeader() {
             {navLinks.map(link => {
               const isActive = link.href === '/'
                 ? pathname === '/'
+                : link.label === 'Ballot'
+                ? pathname.startsWith('/ballot') || pathname.startsWith('/onboarding')
                 : pathname.startsWith(link.href);
               return (
                 <Link
-                  key={link.href}
+                  key={link.label}
                   href={link.href}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
@@ -177,10 +179,12 @@ export default function NavHeader() {
               {navLinks.map(link => {
                 const isActive = link.href === '/'
                   ? pathname === '/'
+                  : link.label === 'Ballot'
+                  ? pathname.startsWith('/ballot') || pathname.startsWith('/onboarding')
                   : pathname.startsWith(link.href);
                 return (
                   <Link
-                    key={link.href}
+                    key={link.label}
                     href={link.href}
                     className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isActive

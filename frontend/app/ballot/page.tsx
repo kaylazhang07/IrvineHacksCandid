@@ -207,7 +207,12 @@ export default function BallotPage() {
 
   useEffect(() => {
     if (profile === null && typeof window !== 'undefined') {
+<<<<<<< HEAD
       if (!localStorage.getItem('candid_user_profile')) router.replace('/');
+=======
+      const stored = localStorage.getItem('candid_user_profile');
+      if (!stored) router.replace('/onboarding');
+>>>>>>> bd7431915ce1160a5686391c4409aaf1014831b4
     }
   }, [profile, router]);
 

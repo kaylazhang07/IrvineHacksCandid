@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin } from '@/lib/types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────────
@@ -137,6 +138,27 @@ const PILL_ICONS: Record<string, string> = {
   economy: '💼', civil_rights: '⚖️', government: '🏛', public_safety: '🛡',
   education: '📚', healthcare: '🏥', family: '🏡', immigration: '🌐',
   technology: '💻', taxes: '🧾', foreign_policy: '🌍', other: '📋',
+};
+
+// ─── Loading phrases per category ────────────────────────────────────────────────
+
+const CAT_LOADING_PHRASE: Record<string, string> = {
+  education:      'Mapping education infrastructure...',
+  housing:        'Analyzing housing legislation...',
+  transportation: 'Tracing transit corridors...',
+  public_safety:  'Locating safety infrastructure...',
+  environment:    'Finding green spaces nearby...',
+  healthcare:     'Identifying healthcare facilities...',
+  economy:        'Decoding economic centers...',
+  water:          'Finding water infrastructure...',
+  civil_rights:   'Mapping civic institutions...',
+  government:     'Locating government buildings...',
+  family:         'Mapping community centers...',
+  immigration:    'Locating community services...',
+  technology:     'Mapping tech corridors...',
+  taxes:          'Locating financial centers...',
+  foreign_policy: 'Finding diplomatic sites...',
+  other:          'Scanning additional landmarks...',
 };
 
 // ─── Impact narrative templates ───────────────────────────────────────────────────
@@ -843,21 +865,140 @@ function injectPillStyles() {
       font-weight: 700;
     }
 
-    /* ═══ LOADING STATE ═══ */
+    /* ═══ LOADING STATE — Immersive Geocoding ═══ */
     .candid-map-loading {
       position: absolute;
       inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(245, 241, 235, 0.85);
-      backdrop-filter: blur(4px);
+      background: rgba(253, 252, 248, 0.80);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       z-index: 20;
-      pointer-events: none;
-      transition: opacity 0.4s ease;
+      overflow: hidden;
     }
-    .candid-map-loading[data-done="true"] {
-      opacity: 0;
+
+    /* Grid overlay */
+    .candid-loading-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    /* Light leaks */
+    .candid-loading-leak-blue {
+      position: absolute;
+      top: -15%;
+      right: -10%;
+      width: 55%;
+      height: 55%;
+      border-radius: 50%;
+      background: radial-gradient(circle, #BFDBFE 0%, transparent 65%);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .candid-loading-leak-pink {
+      position: absolute;
+      bottom: -15%;
+      left: -10%;
+      width: 50%;
+      height: 50%;
+      border-radius: 50%;
+      background: radial-gradient(circle, #FCA5A5 0%, transparent 65%);
+      opacity: 0.38;
+      pointer-events: none;
+    }
+    .candid-loading-leak-lime {
+      position: absolute;
+      top: 40%;
+      left: 5%;
+      width: 35%;
+      height: 35%;
+      border-radius: 50%;
+      background: radial-gradient(circle, #BBF7D0 0%, transparent 65%);
+      opacity: 0.30;
+      pointer-events: none;
+    }
+
+    /* Center squircle with radar */
+    .candid-loading-squircle {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      border-radius: 26px;
+      background: #FDFCF8;
+      border: 1px solid rgba(0,0,0,0.07);
+      box-shadow:
+        0 4px 24px rgba(0,0,0,0.06),
+        0 1px 4px rgba(0,0,0,0.04),
+        inset 0 1px 0 rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Rotating radar sweep */
+    .candid-loading-radar {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgba(107,158,130,0.55) 22deg,
+        rgba(107,158,130,0.18) 42deg,
+        transparent 65deg
+      );
+      animation: candid-radar-spin 2.4s linear infinite;
+    }
+    @keyframes candid-radar-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* Crosshair lines */
+    .candid-loading-ch-h,
+    .candid-loading-ch-v {
+      position: absolute;
+      background: rgba(107,158,130,0.16);
+    }
+    .candid-loading-ch-h { top: 50%; left: 10px; right: 10px; height: 1px; transform: translateY(-50%); }
+    .candid-loading-ch-v { left: 50%; top: 10px; bottom: 10px; width: 1px; transform: translateX(-50%); }
+
+    /* Center dot */
+    .candid-loading-dot {
+      position: relative;
+      z-index: 2;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #6B9E82;
+      box-shadow: 0 0 0 3px rgba(107,158,130,0.22);
+    }
+
+    /* Ping ripple ring — re-animates via Framer Motion key change */
+    .candid-loading-ping {
+      position: absolute;
+      inset: 0;
+      border-radius: 26px;
+      border: 2px solid rgba(107,158,130,0.55);
+      pointer-events: none;
+    }
+
+    /* Progress track */
+    .candid-loading-track {
+      width: 180px;
+      height: 2px;
+      background: rgba(0,0,0,0.07);
+      border-radius: 99px;
+      overflow: hidden;
+      position: relative;
     }
 
     /* ═══ CATEGORY SWITCHER BAR ═══ */
@@ -1375,20 +1516,130 @@ export default function CityMap({
     });
   }, [impactScores]);
 
+  // ── Loading state derived values ─────────────────────────────────────────────
+  const catKeys = Object.keys(measureMap);
+  const currentCat = catKeys[Math.min(pinLoad.done, catKeys.length - 1)] ?? '';
+  const currentColor = PILL_COLORS[currentCat] ?? '#6B9E82';
+  const loadingPhrase =
+    pinLoad.total === 0
+      ? 'Scanning your location...'
+      : CAT_LOADING_PHRASE[currentCat] ?? `Analyzing ${currentCat.replace(/_/g, ' ')}...`;
+  const progressPct = pinLoad.total > 0 ? (pinLoad.done / pinLoad.total) * 100 : 5;
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '500px' }}>
-      {/* Loading overlay */}
-      {pinLoad.active && (
-        <div className="candid-map-loading" data-done={String(!pinLoad.active)}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>🗺</div>
-            <div style={{ fontSize: '13px', color: '#888' }}>
-              Finding places near you
-              {pinLoad.total > 0 ? ` (${pinLoad.done}/${pinLoad.total})` : '…'}
+
+      {/* ── Loading overlay — Immersive Geocoding ─────────────────────────── */}
+      <AnimatePresence>
+        {pinLoad.active && (
+          <motion.div
+            key="loading-overlay"
+            className="candid-map-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            {/* Background texture */}
+            <div className="candid-loading-grid" />
+            <div className="candid-loading-leak-blue" />
+            <div className="candid-loading-leak-pink" />
+            <div className="candid-loading-leak-lime" />
+
+            {/* ── Center content ── */}
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22 }}>
+
+              {/* Squircle radar */}
+              <div style={{ position: 'relative' }}>
+                <div className="candid-loading-squircle">
+                  <div className="candid-loading-radar" />
+                  <div className="candid-loading-ch-h" />
+                  <div className="candid-loading-ch-v" />
+                  {/* Concentric rings */}
+                  <div style={{ position: 'absolute', borderRadius: '50%', border: '1px solid rgba(107,158,130,0.12)', width: 58, height: 58, pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', borderRadius: '50%', border: '1px solid rgba(107,158,130,0.07)', width: 78, height: 78, pointerEvents: 'none' }} />
+                  <div className="candid-loading-dot" />
+                  {/* Ping ripple — fires on every done increment */}
+                  <motion.div
+                    key={`ping-${pinLoad.done}`}
+                    className="candid-loading-ping"
+                    initial={{ scale: 1, opacity: 0.7 }}
+                    animate={{ scale: 2.1, opacity: 0 }}
+                    transition={{ duration: 0.85, ease: 'easeOut' }}
+                  />
+                </div>
+
+                {/* Outer ambient pulse ring */}
+                <motion.div
+                  animate={{ scale: [1, 1.08, 1], opacity: [0.18, 0.06, 0.18] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{
+                    position: 'absolute',
+                    inset: -12,
+                    borderRadius: 38,
+                    border: `1.5px solid ${currentColor}`,
+                    pointerEvents: 'none',
+                    transition: 'border-color 0.5s ease',
+                  }}
+                />
+              </div>
+
+              {/* Dynamic phrase — cross-fades on category change */}
+              <div style={{ textAlign: 'center', width: 240 }}>
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={loadingPhrase}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.28 }}
+                    style={{
+                      fontSize: 13.5,
+                      fontWeight: 500,
+                      color: '#57534E',
+                      letterSpacing: '0.01em',
+                      margin: 0,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {loadingPhrase}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div className="candid-loading-track">
+                  <motion.div
+                    animate={{ width: `${progressPct}%` }}
+                    transition={{ duration: 0.55, ease: [0.34, 1.56, 0.64, 1] }}
+                    style={{
+                      height: '100%',
+                      borderRadius: 99,
+                      background: currentColor,
+                      transition: 'background 0.5s ease',
+                      minWidth: progressPct > 0 ? 6 : 0,
+                    }}
+                  />
+                </div>
+                {pinLoad.total > 0 && (
+                  <p style={{
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: '#A8A09A',
+                    margin: 0,
+                  }}>
+                    {pinLoad.done} of {pinLoad.total} categories decoded
+                  </p>
+                )}
+              </div>
+
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ NEW: Category Switcher Bar ═══ */}
       {Object.keys(measureMap).length > 0 && (

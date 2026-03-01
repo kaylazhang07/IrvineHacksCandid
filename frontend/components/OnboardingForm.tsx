@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, BookOpen, Home, Car, Leaf, Shield, Briefcase, LucideIcon } from 'lucide-react';
@@ -49,7 +49,8 @@ const FALLBACK_TOPICS: Topic[] = [
   { id: 'jobs', label: 'Jobs & Economy', icon: 'briefcase' },
 ];
 
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 8;
+const STEP_KEY = 'candid_onboarding_step';
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -71,14 +72,16 @@ export function OnboardingForm() {
   const [ageBracket, setAgeBracket] = useState<UserProfile['age_bracket'] | ''>('');
   // Step 6 — Income
   const [income, setIncome] = useState<UserProfile['household_income_bracket'] | ''>('');
-  // Step 7 — Job
-  const [job, setJob] = useState('');
-  // Step 8 — Owns business
-  const [ownsBusiness, setOwnsBusiness] = useState<boolean | null>(null);
-  // Step 9 — Topics + submit
+  // Step 7 — Topics + submit
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => {
+    try { return parseInt(localStorage.getItem(STEP_KEY) || '0') || 0; } catch { return 0; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(STEP_KEY, String(step)); } catch {}
+  }, [step]);
 
   function next() { setStep(s => s + 1); }
 
@@ -95,12 +98,11 @@ export function OnboardingForm() {
       has_children: children!,
       household_income_bracket: income as UserProfile['household_income_bracket'],
       primary_concerns: selectedTopics,
-      job: job.trim() || undefined,
       goals: goals.trim() ? [goals.trim()] : undefined,
       age_bracket: (ageBracket || undefined) as UserProfile['age_bracket'],
       commute_method: (commute || undefined) as UserProfile['commute_method'],
-      owns_business: ownsBusiness ?? undefined,
     };
+    try { localStorage.removeItem(STEP_KEY); } catch {}
     setProfile(profile);
     router.push('/ballot');
   }
@@ -270,50 +272,9 @@ export function OnboardingForm() {
             </motion.div>
           )}
 
-          {/* Step 7: Job */}
+          {/* Step 7: Topics + Submit */}
           {step === 7 && (
             <motion.div key="step7" variants={variants} initial="enter" animate="center" exit="exit" transition={transition}>
-              <h1 className="text-2xl font-bold mb-1">What do you do?</h1>
-              <p className="text-zinc-500 mb-6 text-sm">Helps us explain how policies affect your livelihood.</p>
-              <input
-                type="text"
-                autoFocus
-                placeholder="e.g. Software engineer, Teacher, Retired..."
-                value={job}
-                onChange={e => setJob(e.target.value)}
-                className="w-full border border-zinc-300 rounded-xl px-4 py-3 text-base mb-4 focus:outline-none focus:ring-2 focus:ring-zinc-800 text-zinc-900 placeholder:text-zinc-400"
-              />
-              <button
-                onClick={next}
-                className="w-full bg-zinc-900 text-white rounded-xl py-3 font-semibold hover:bg-zinc-800 transition-colors"
-              >
-                {job.trim() ? 'Continue →' : 'Skip for now →'}
-              </button>
-            </motion.div>
-          )}
-
-          {/* Step 8: Own a business? */}
-          {step === 8 && (
-            <motion.div key="step8" variants={variants} initial="enter" animate="center" exit="exit" transition={transition}>
-              <h1 className="text-2xl font-bold mb-1">Do you own a business?</h1>
-              <p className="text-zinc-500 mb-6 text-sm">Tax, zoning, and licensing measures can have big impacts on business owners.</p>
-              <div className="grid gap-3">
-                {[{ label: '✅ Yes', val: true }, { label: '🚫 No', val: false }].map(({ label, val }) => (
-                  <button key={String(val)} onClick={() => { setOwnsBusiness(val); next(); }}
-                    className="w-full border-2 rounded-xl py-4 text-left px-5 font-medium hover:border-zinc-800 hover:bg-zinc-50">
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <button onClick={next} className="mt-3 text-sm text-zinc-400 hover:text-zinc-600 w-full text-center">
-                Skip
-              </button>
-            </motion.div>
-          )}
-
-          {/* Step 9: Topics + Submit */}
-          {step === 9 && (
-            <motion.div key="step9" variants={variants} initial="enter" animate="center" exit="exit" transition={transition}>
               <h1 className="text-2xl font-bold mb-1">What matters to you?</h1>
               <p className="text-zinc-500 mb-6 text-sm">Select topics to highlight on your ballot.</p>
               <div className="flex flex-wrap gap-2 mb-8">

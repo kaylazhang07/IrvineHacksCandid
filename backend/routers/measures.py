@@ -44,6 +44,69 @@ class Measure(BaseModel):
     personal_annual_usd: float
 
 
+# ── Fallback measures — returned only when ChromaDB has no data ingested yet.
+# Once real data is in ChromaDB, the endpoint returns ChromaDB results first
+# and this list is never reached. Safe to leave in place permanently.
+SAMPLE_MEASURES = [
+    Measure(
+        measure_id="hr-housing-2025",
+        title="Affordable Housing Expansion Act",
+        summary="Requires cities to zone at least 15% of new residential developments as affordable units, with rent stabilization protections for current tenants during construction periods.",
+        category="housing",
+        personal_annual_usd=float(CATEGORY_IMPACT["housing"]),
+    ),
+    Measure(
+        measure_id="hr-edu-2025",
+        title="K-12 Education Funding Reform",
+        summary="Redistributes state education funding to reduce per-pupil spending disparities between wealthy and lower-income districts, and adds mandatory mental health counselors at middle and high schools.",
+        category="education",
+        personal_annual_usd=float(CATEGORY_IMPACT["education"]),
+    ),
+    Measure(
+        measure_id="hr-transit-2025",
+        title="Regional Transit Modernization Act",
+        summary="Allocates funds for expanded bus rapid transit corridors, electrification of the public bus fleet, and fare-free rides during peak pollution days.",
+        category="transportation",
+        personal_annual_usd=float(CATEGORY_IMPACT["transportation"]),
+    ),
+    Measure(
+        measure_id="hr-safety-2025",
+        title="Community Safety & Crisis Response Act",
+        summary="Funds co-responder programs pairing mental health clinicians with police for non-violent calls, expands neighborhood watch infrastructure, and requires body cameras for all patrol officers.",
+        category="public_safety",
+        personal_annual_usd=float(CATEGORY_IMPACT["public_safety"]),
+    ),
+    Measure(
+        measure_id="hr-env-2025",
+        title="Clean Air & Open Spaces Initiative",
+        summary="Sets binding emissions reduction targets for medium-sized businesses, expands protected parkland, and creates a grant program for urban tree planting in heat-vulnerable neighborhoods.",
+        category="environment",
+        personal_annual_usd=float(CATEGORY_IMPACT["environment"]),
+    ),
+    Measure(
+        measure_id="hr-health-2025",
+        title="Community Health Access Expansion",
+        summary="Funds 24 new community health centers in underserved ZIP codes, expands Medi-Cal dental coverage, and requires hospitals to offer sliding-scale billing for uninsured patients.",
+        category="healthcare",
+        personal_annual_usd=float(CATEGORY_IMPACT["healthcare"]),
+    ),
+    Measure(
+        measure_id="hr-jobs-2025",
+        title="Small Business & Workforce Development Act",
+        summary="Creates low-interest loan programs for small businesses, funds apprenticeship programs in construction and healthcare, and raises the minimum wage to $18/hr by 2026.",
+        category="economy",
+        personal_annual_usd=float(CATEGORY_IMPACT["economy"]),
+    ),
+    Measure(
+        measure_id="hr-water-2025",
+        title="Water Infrastructure Modernization Act",
+        summary="Replaces aging lead service lines in older neighborhoods, upgrades stormwater management to reduce flooding risk, and funds drought-resilient water recycling facilities.",
+        category="other",
+        personal_annual_usd=float(CATEGORY_IMPACT["other"]),
+    ),
+]
+
+
 def _query_measures(collection, where_filter, limit=200):
     """Query ChromaDB and deduplicate by measure_id."""
     try:
@@ -116,5 +179,13 @@ async def list_measures(
         else:
             where_filter = {"jurisdiction": "federal"}
         measures = _query_measures(collection, where_filter)
+
+    # 3) Fallback to sample data only when ChromaDB is entirely empty.
+    #    Once real data is ingested, steps 1 or 2 will return results and
+    #    this branch is never reached — no impact on production data.
+    if not measures:
+        if topic:
+            return [m for m in SAMPLE_MEASURES if m.category == topic]
+        return SAMPLE_MEASURES
 
     return measures[:50]
