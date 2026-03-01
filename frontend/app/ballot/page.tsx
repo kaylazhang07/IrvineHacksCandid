@@ -23,7 +23,7 @@ export default function BallotPage() {
   useEffect(() => {
     if (profile === null && typeof window !== 'undefined') {
       const stored = localStorage.getItem('candid_user_profile');
-      if (!stored) router.replace('/');
+      if (!stored) router.replace('/onboarding');
     }
   }, [profile, router]);
 
