@@ -1,6 +1,39 @@
 'use client';
 import useSWR from 'swr';
-import { Race } from '@/lib/types';
+import { UserProfile } from '@/lib/types';
+
+export interface RaceSource {
+  title: string;
+  url: string;
+  source_type: string;
+  accessed_date: string;
+}
+
+export interface RaceCandidate {
+  name: string;
+  party: string;
+  bio: string;
+  photo_url: string;
+  website: string;
+  phone: string;
+  email: string;
+  social: Record<string, string>;
+  top_priorities: string[];
+  budget_stance: Record<string, number>;
+  platform_summary: string;
+  experience: string[];
+  endorsements: string[];
+  sources: RaceSource[];
+}
+
+export interface Race {
+  race_id: string;
+  position: string;
+  jurisdiction: string;
+  division_id?: string;
+  district?: string;
+  candidates: RaceCandidate[];
+}
 
 const fetcher = (url: string) =>
   fetch(url).then(r => {
@@ -8,12 +41,14 @@ const fetcher = (url: string) =>
     return r.json();
   });
 
-export function useRaces(zip: string | null) {
-  const { data, error, isLoading } = useSWR<Race[]>(
-    zip ? `${process.env.NEXT_PUBLIC_API_URL}/api/races?zip=${zip}` : null,
-    fetcher,
-    { shouldRetryOnError: false }
-  );
-  const races = Array.isArray(data) ? data : [];
-  return { races, isLoading, error };
+export function useRaces(profile: UserProfile | null) {
+  const url = profile
+    ? `${process.env.NEXT_PUBLIC_API_URL}/api/races?zip=${profile.zip_code}`
+    : null;
+
+  const { data, error, isLoading } = useSWR<Race[]>(url, fetcher, {
+    shouldRetryOnError: false,
+  });
+
+  return { races: Array.isArray(data) ? data : [], isLoading, error };
 }

@@ -1,3 +1,4 @@
+from typing import Optional
 import re
 from fastapi import APIRouter
 from models import ExplainRequest, ExplainResponse, Citation
@@ -37,7 +38,7 @@ def _fix_source_url(url: str) -> str:
     return url
 
 
-def _lookup_measure(measure_id: str) -> dict | None:
+def _lookup_measure(measure_id: str) -> Optional[dict]:
     try:
         collection = get_collection()
         results = collection.get(

@@ -1,0 +1,972 @@
+[
+  {
+    "name": {
+      "first": "Patty",
+      "last": "Murray"
+    },
+    "id": {
+      "bioguide": "M001111"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "WA",
+        "party": "Democrat",
+        "url": "https://murray.senate.gov",
+        "phone": "202-224-2621",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Maria",
+      "last": "Cantwell"
+    },
+    "id": {
+      "bioguide": "C000127"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "WA",
+        "party": "Democrat",
+        "url": "https://cantwell.senate.gov",
+        "phone": "202-224-3441",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Suzan",
+      "last": "DelBene"
+    },
+    "id": {
+      "bioguide": "D000617"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 1,
+        "party": "Democrat",
+        "url": "https://delbene.house.gov",
+        "phone": "202-225-6311",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Rick",
+      "last": "Larsen"
+    },
+    "id": {
+      "bioguide": "L000560"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "https://larsen.house.gov",
+        "phone": "202-225-2605",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Marie",
+      "last": "Gluesenkamp Perez"
+    },
+    "id": {
+      "bioguide": "G000600"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 3,
+        "party": "Democrat",
+        "url": "https://gluesenkampperez.house.gov",
+        "phone": "202-225-3536",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Dan",
+      "last": "Newhouse"
+    },
+    "id": {
+      "bioguide": "N000189"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 4,
+        "party": "Republican",
+        "url": "https://newhouse.house.gov",
+        "phone": "202-225-5816",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Cathy",
+      "last": "McMorris Rodgers"
+    },
+    "id": {
+      "bioguide": "M001159"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 5,
+        "party": "Republican",
+        "url": "https://mcmorris.house.gov",
+        "phone": "202-225-2006",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Derek",
+      "last": "Kilmer"
+    },
+    "id": {
+      "bioguide": "K000381"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 6,
+        "party": "Democrat",
+        "url": "https://kilmer.house.gov",
+        "phone": "202-225-5916",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Pramila",
+      "last": "Jayapal"
+    },
+    "id": {
+      "bioguide": "J000298"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 7,
+        "party": "Democrat",
+        "url": "https://jayapal.house.gov",
+        "phone": "202-225-3106",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Kim",
+      "last": "Schrier"
+    },
+    "id": {
+      "bioguide": "S001216"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 8,
+        "party": "Democrat",
+        "url": "https://schrier.house.gov",
+        "phone": "202-225-7761",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Adam",
+      "last": "Smith"
+    },
+    "id": {
+      "bioguide": "S000510"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 9,
+        "party": "Democrat",
+        "url": "https://adamsmith.house.gov",
+        "phone": "202-225-8901",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Marilyn",
+      "last": "Strickland"
+    },
+    "id": {
+      "bioguide": "S001159"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "WA",
+        "district": 10,
+        "party": "Democrat",
+        "url": "https://strickland.house.gov",
+        "phone": "202-225-9740",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Chuck",
+      "last": "Schumer"
+    },
+    "id": {
+      "bioguide": "S000148"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "NY",
+        "party": "Democrat",
+        "url": "https://schumer.senate.gov",
+        "phone": "202-224-6542",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Kirsten",
+      "last": "Gillibrand"
+    },
+    "id": {
+      "bioguide": "G000555"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "NY",
+        "party": "Democrat",
+        "url": "https://gillibrand.senate.gov",
+        "phone": "202-224-4451",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Alex",
+      "last": "Padilla"
+    },
+    "id": {
+      "bioguide": "P000145"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "CA",
+        "party": "Democrat",
+        "url": "https://padilla.senate.gov",
+        "phone": "202-224-3553",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Adam",
+      "last": "Schiff"
+    },
+    "id": {
+      "bioguide": "S001150"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "CA",
+        "party": "Democrat",
+        "url": "https://schiff.senate.gov",
+        "phone": "202-224-3841",
+        "start": "2025-01-03",
+        "end": "2031-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "John",
+      "last": "Fetterman"
+    },
+    "id": {
+      "bioguide": "F000479"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "PA",
+        "party": "Democrat",
+        "url": "https://fetterman.senate.gov",
+        "phone": "202-224-4254",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Bob",
+      "last": "Casey"
+    },
+    "id": {
+      "bioguide": "C001070"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "PA",
+        "party": "Democrat",
+        "url": "https://casey.senate.gov",
+        "phone": "202-224-6324",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Ted",
+      "last": "Cruz"
+    },
+    "id": {
+      "bioguide": "C001098"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "TX",
+        "party": "Republican",
+        "url": "https://cruz.senate.gov",
+        "phone": "202-224-5922",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "John",
+      "last": "Cornyn"
+    },
+    "id": {
+      "bioguide": "C001056"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "TX",
+        "party": "Republican",
+        "url": "https://cornyn.senate.gov",
+        "phone": "202-224-2934",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Marco",
+      "last": "Rubio"
+    },
+    "id": {
+      "bioguide": "R000595"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "FL",
+        "party": "Republican",
+        "url": "https://rubio.senate.gov",
+        "phone": "202-224-3041",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Rick",
+      "last": "Scott"
+    },
+    "id": {
+      "bioguide": "S001217"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "FL",
+        "party": "Republican",
+        "url": "https://rickscott.senate.gov",
+        "phone": "202-224-5274",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Dick",
+      "last": "Durbin"
+    },
+    "id": {
+      "bioguide": "D000563"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "IL",
+        "party": "Democrat",
+        "url": "https://durbin.senate.gov",
+        "phone": "202-224-2152",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Tammy",
+      "last": "Duckworth"
+    },
+    "id": {
+      "bioguide": "D000622"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "IL",
+        "party": "Democrat",
+        "url": "https://duckworth.senate.gov",
+        "phone": "202-224-2854",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Sherrod",
+      "last": "Brown"
+    },
+    "id": {
+      "bioguide": "B000944"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "OH",
+        "party": "Democrat",
+        "url": "https://brown.senate.gov",
+        "phone": "202-224-2315",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "J.D.",
+      "last": "Vance"
+    },
+    "id": {
+      "bioguide": "V000137"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "OH",
+        "party": "Republican",
+        "url": "https://vance.senate.gov",
+        "phone": "202-224-3353",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Jon",
+      "last": "Ossoff"
+    },
+    "id": {
+      "bioguide": "O000174"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "GA",
+        "party": "Democrat",
+        "url": "https://ossoff.senate.gov",
+        "phone": "202-224-3521",
+        "start": "2021-01-20",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Raphael",
+      "last": "Warnock"
+    },
+    "id": {
+      "bioguide": "W000790"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "GA",
+        "party": "Democrat",
+        "url": "https://warnock.senate.gov",
+        "phone": "202-224-3643",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Mark",
+      "last": "Warner"
+    },
+    "id": {
+      "bioguide": "W000805"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "VA",
+        "party": "Democrat",
+        "url": "https://warner.senate.gov",
+        "phone": "202-224-2023",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Tim",
+      "last": "Kaine"
+    },
+    "id": {
+      "bioguide": "K000384"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "VA",
+        "party": "Democrat",
+        "url": "https://kaine.senate.gov",
+        "phone": "202-224-4024",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Bernie",
+      "last": "Sanders"
+    },
+    "id": {
+      "bioguide": "S000033"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "VT",
+        "party": "Independent",
+        "url": "https://sanders.senate.gov",
+        "phone": "202-224-5141",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Peter",
+      "last": "Welch"
+    },
+    "id": {
+      "bioguide": "W000800"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "VT",
+        "party": "Democrat",
+        "url": "https://welch.senate.gov",
+        "phone": "202-224-4242",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Elizabeth",
+      "last": "Warren"
+    },
+    "id": {
+      "bioguide": "W000817"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "MA",
+        "party": "Democrat",
+        "url": "https://warren.senate.gov",
+        "phone": "202-224-4543",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Ed",
+      "last": "Markey"
+    },
+    "id": {
+      "bioguide": "M000133"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "MA",
+        "party": "Democrat",
+        "url": "https://markey.senate.gov",
+        "phone": "202-224-2742",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Mitch",
+      "last": "McConnell"
+    },
+    "id": {
+      "bioguide": "M000355"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "KY",
+        "party": "Republican",
+        "url": "https://mcconnell.senate.gov",
+        "phone": "202-224-2541",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Rand",
+      "last": "Paul"
+    },
+    "id": {
+      "bioguide": "P000603"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "KY",
+        "party": "Republican",
+        "url": "https://paul.senate.gov",
+        "phone": "202-224-4343",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Ron",
+      "last": "Wyden"
+    },
+    "id": {
+      "bioguide": "W000779"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "OR",
+        "party": "Democrat",
+        "url": "https://wyden.senate.gov",
+        "phone": "202-224-5244",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Jeff",
+      "last": "Merkley"
+    },
+    "id": {
+      "bioguide": "M001176"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "OR",
+        "party": "Democrat",
+        "url": "https://merkley.senate.gov",
+        "phone": "202-224-3753",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Mike",
+      "last": "Crapo"
+    },
+    "id": {
+      "bioguide": "C000880"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "ID",
+        "party": "Republican",
+        "url": "https://crapo.senate.gov",
+        "phone": "202-224-6142",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Jim",
+      "last": "Risch"
+    },
+    "id": {
+      "bioguide": "R000584"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "ID",
+        "party": "Republican",
+        "url": "https://risch.senate.gov",
+        "phone": "202-224-2752",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Mitt",
+      "last": "Romney"
+    },
+    "id": {
+      "bioguide": "R000615"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "UT",
+        "party": "Republican",
+        "url": "https://romney.senate.gov",
+        "phone": "202-224-5251",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Mike",
+      "last": "Lee"
+    },
+    "id": {
+      "bioguide": "L000577"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "UT",
+        "party": "Republican",
+        "url": "https://lee.senate.gov",
+        "phone": "202-224-5444",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Michael",
+      "last": "Bennet"
+    },
+    "id": {
+      "bioguide": "B001267"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "CO",
+        "party": "Democrat",
+        "url": "https://bennet.senate.gov",
+        "phone": "202-224-5852",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "John",
+      "last": "Hickenlooper"
+    },
+    "id": {
+      "bioguide": "H001081"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "CO",
+        "party": "Democrat",
+        "url": "https://hickenlooper.senate.gov",
+        "phone": "202-224-5941",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Catherine",
+      "last": "Cortez Masto"
+    },
+    "id": {
+      "bioguide": "C001113"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "NV",
+        "party": "Democrat",
+        "url": "https://cortezmasto.senate.gov",
+        "phone": "202-224-3542",
+        "start": "2023-01-03",
+        "end": "2029-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Jacky",
+      "last": "Rosen"
+    },
+    "id": {
+      "bioguide": "R000608"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "NV",
+        "party": "Democrat",
+        "url": "https://rosen.senate.gov",
+        "phone": "202-224-6244",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Dianne",
+      "last": "Feinstein"
+    },
+    "id": {
+      "bioguide": "F000062"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "MI",
+        "party": "Democrat",
+        "url": "https://peters.senate.gov",
+        "phone": "202-224-6221",
+        "start": "2021-01-03",
+        "end": "2027-01-03"
+      }
+    ]
+  },
+  {
+    "name": {
+      "first": "Debbie",
+      "last": "Stabenow"
+    },
+    "id": {
+      "bioguide": "S000770"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "MI",
+        "party": "Democrat",
+        "url": "https://stabenow.senate.gov",
+        "phone": "202-224-4822",
+        "start": "2019-01-03",
+        "end": "2025-01-03"
+      }
+    ]
+  }
+]
