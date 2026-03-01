@@ -98,7 +98,7 @@ async def explain_measure(req: ExplainRequest):
 
     map_pins = []  # map pins now resolved client-side via Mapbox POI search
 
-    budget_shifts = predict_budget_shifts(req.measure_id, req.user, state=state)
+    budget_shifts = predict_budget_shifts(req.measure_id, req.user, state=state, measure_text=measure_text or "")
 
     try:
         generated = generate_explanation(measure_title, ranked_chunks, req.user, budget_shifts)
@@ -118,12 +118,13 @@ async def explain_measure(req: ExplainRequest):
                 (g["plain_translation"] for g in generated.get("citations", []) if g["chunk_id"] == c["chunk_id"]),
                 "See source for details.",
             ),
-            relevance_score=c.get("relevance_score") or c.get("score", 0.5),
+            relevance_score=float(c.get("relevance_score") or c.get("score") or 0.5),
         )
         for c in ranked_chunks
     ]
 
-    confidence = sum(c.relevance_score for c in citations) / max(len(citations), 1)
+    raw_scores = [c.get("score", 0.5) for c in ranked_chunks]
+    confidence = sum(raw_scores) / max(len(raw_scores), 1)
 
     response = ExplainResponse(
         measure_id=req.measure_id,

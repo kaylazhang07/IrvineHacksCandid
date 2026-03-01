@@ -1,6 +1,7 @@
 """Load trained model and predict budget shifts."""
 
 import os
+import re
 import pickle
 from .features import personalize_shift, make_prediction_features, CATEGORIES
 
@@ -16,16 +17,18 @@ CATEGORY_BUDGETS_BY_STATE = {
 }
 DEFAULT_BUDGETS = CATEGORY_BUDGETS_BY_STATE["CA"]
 
-MEASURE_BIAS = {
-    "hr-edu-2025":     {"education": +1.5},
-    "hr-housing-2025": {"housing": +2.0, "transportation": +0.5},
-    "hr-transit-2025": {"transportation": +2.0, "environment": +0.8},
-    "hr-safety-2025":  {"public_safety": +1.0},
-    "hr-env-2025":     {"environment": +2.5, "transportation": +0.5},
-    "hr-health-2025":  {"housing": +0.3},
-    "hr-jobs-2025":    {"education": +0.5},
-    "hr-water-2025":   {"environment": +1.0, "housing": +0.8},
+# Keywords that signal a category is actually relevant to the measure text
+CATEGORY_KEYWORDS = {
+    "housing":        ["housing", "rent", "tenant", "affordable", "eviction", "mortgage", "homelessness", "shelter", "dwelling", "residential"],
+    "education":      ["education", "school", "student", "teacher", "classroom", "curriculum", "college", "university", "learning", "literacy"],
+    "transportation": ["transportation", "transit", "highway", "road", "bus", "rail", "commute", "infrastructure", "bridge", "traffic"],
+    "public_safety":  ["safety", "police", "fire", "emergency", "crime", "law enforcement", "911", "officer", "patrol", "security"],
+    "environment":    ["environment", "climate", "pollution", "clean energy", "carbon", "water", "air quality", "conservation", "renewable", "emission"],
 }
+
+# Hard floor/ceiling so model never predicts crazy numbers
+DELTA_PCT_MIN = -8.0
+DELTA_PCT_MAX = 8.0
 
 
 def _load_model():
@@ -36,11 +39,33 @@ def _load_model():
     return _model_data
 
 
-def predict_budget_shifts(measure_id: str, user, state: str = "CA") -> list:
+def _relevance_scores(measure_text: str) -> dict[str, float]:
+    """
+    Score each budget category by how many of its keywords appear
+    in the measure text. Returns a dict of category -> 0.0..1.0.
+    A score of 0.0 means the measure has nothing to do with that category.
+    """
+    if not measure_text:
+        return {cat: 1.0 for cat in CATEGORIES}  # no text — don't filter anything
+
+    text = measure_text.lower()
+    scores = {}
+    for cat, keywords in CATEGORY_KEYWORDS.items():
+        hits = sum(1 for kw in keywords if re.search(r'\b' + re.escape(kw) + r'\b', text))
+        scores[cat] = min(hits / 3.0, 1.0)  # 3+ keyword hits = full relevance
+
+    # If nothing matched at all, don't zero everything out — use small baseline
+    if max(scores.values()) == 0.0:
+        return {cat: 0.1 for cat in CATEGORIES}
+
+    return scores
+
+
+def predict_budget_shifts(measure_id: str, user, state: str = "CA", measure_text: str = "") -> list:
     from models import BudgetShift
 
     category_budgets = CATEGORY_BUDGETS_BY_STATE.get(state, DEFAULT_BUDGETS)
-    bias = MEASURE_BIAS.get(measure_id, {})
+    relevance = _relevance_scores(measure_text)
 
     try:
         data = _load_model()
@@ -54,11 +79,16 @@ def predict_budget_shifts(measure_id: str, user, state: str = "CA") -> list:
         if use_model:
             jur = "state" if state in ["CA", "NY", "TX", "PA"] else "city"
             X = make_prediction_features(cat, jur, state=state)
-            delta_pct = float(model.predict(X)[0])
+            raw_delta = float(model.predict(X)[0])
         else:
-            delta_pct = 0.0
+            raw_delta = 0.0
 
-        delta_pct += bias.get(cat, 0.0)
+        # Scale by relevance: if the measure doesn't mention this category, shrink toward 0
+        rel = relevance.get(cat, 0.0)
+        delta_pct = raw_delta * rel
+
+        # Clamp to reasonable range
+        delta_pct = max(DELTA_PCT_MIN, min(DELTA_PCT_MAX, delta_pct))
         delta_pct = round(delta_pct, 2)
 
         base_usd = category_budgets.get(cat, 500_000_000)

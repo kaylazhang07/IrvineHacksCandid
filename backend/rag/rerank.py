@@ -56,7 +56,8 @@ def rerank_chunks(chunks: list[dict], user, measure_title: str) -> list[dict]:
         raw = raw.removeprefix("```json").removesuffix("```").strip()
         scores = json.loads(raw)
         score_map = {s["chunk_id"]: s["score"] for s in scores}
-    except Exception:
+    except Exception as e:
+        import traceback; traceback.print_exc()
         score_map = {}
 
     for chunk in chunks:
