@@ -18,6 +18,26 @@ interface Props {
   measureDescriptions?: Record<string, string>;
 }
 
+const isValidPlaceName = (name: string | undefined): boolean => {
+  if (!name) return false;
+  
+  const trimmed = name.trim();
+  
+  
+  if (trimmed.length <= 2) return false;
+  
+  
+  if (/^\d+$/.test(trimmed)) return false;
+
+  if (/^[A-Za-z]\d*$/.test(trimmed)) return false;
+  
+  // Reject generic system strings
+  const lower = trimmed.toLowerCase();
+  const blacklisted = ['unknown', 'n/a', 'undefined', 'null', 'point'];
+  if (blacklisted.includes(lower)) return false;
+
+  return true;
+};
 // ─── Visual Config ────────────────────────────────────────────────────────────────
 const PILL_COLORS: Record<string, string> = {
   housing: '#818cf8', education: '#a78bfa', transportation: '#38bdf8',
@@ -213,7 +233,7 @@ function isValidForCategory(category: string, tags: Record<string, string> | und
 }
 
 type PinLocation = { name: string; lat: number; lon: number; type?: string };
-type PinMap = Record<string, PinLocation>;
+type PinMap = Record<string, PinLocation| null>;
 
 const pinCache: Record<string, PinMap> = {};
 
@@ -222,7 +242,7 @@ function cacheKey(lat: number, lng: number): string {
 }
 
 // ─── Cache version — bump this when you change query logic ───────────────────────
-const PIN_CACHE_VERSION = 2;
+const PIN_CACHE_VERSION = 3;
 
 // ─── Prioritized Overpass queries per category ────────────────────────────────────
 const PRIORITY_QUERIES: Record<string, Array<{ q: string; r: number }>> = {
@@ -272,9 +292,9 @@ const PRIORITY_QUERIES: Record<string, Array<{ q: string; r: number }>> = {
     { q: 'node["office"="ngo"](around:{R},{LAT},{LNG});', r: 5000 },
   ],
   housing: [
-    { q: 'way["building"="apartments"]["name"](around:{R},{LAT},{LNG});', r: 3000 },
+    { q: 'way["building"="apartments"]["name"]["name"~".{3,}"](around:{R},{LAT},{LNG});', r: 3000 },
     { q: 'node["office"="estate_agent"](around:{R},{LAT},{LNG});', r: 4000 },
-    { q: 'node["office"="housing"](around:{R},{LAT},{LNG});', r: 6000 },
+    { q: 'node["social_facility"="housing"](around:{R},{LAT},{LNG});way["amenity"="social_facility"]["social_facility"="shelter"](around:{R},{LAT},{LNG});', r: 8000 },
   ],
   family: [
     { q: 'way["amenity"="community_centre"](around:{R},{LAT},{LNG});node["amenity"="community_centre"](around:{R},{LAT},{LNG});', r: 5000 },
@@ -325,20 +345,28 @@ async function fetchCategoryPinOverpass(
       if (!res.ok) continue;
       const data = await res.json();
       const elements: any[] = data?.elements ?? [];
+      
       const candidates = elements
         .map((el: any) => {
           const elLat = el.lat ?? el.center?.lat;
           const elLon = el.lon ?? el.center?.lon;
           if (elLat == null || elLon == null) return null;
           if (!isValidForCategory(category, el.tags)) return null;
-          const name =
+
+          // 1. Try to get a REAL name from the API tags
+          const rawName =
             el.tags?.name ??
             el.tags?.['name:en'] ??
             el.tags?.operator ??
-            el.tags?.brand ??
-            category.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+            el.tags?.brand;
+
+         
+          if (!isValidPlaceName(rawName)) {
+            return null; // Skip this element entirely — coordinates aren't trustworthy
+          }
+
           return {
-            name,
+            name: rawName!.trim(),
             lat: elLat,
             lon: elLon,
             type: el.tags?.amenity ?? el.tags?.office ?? el.tags?.leisure ?? category,
@@ -494,7 +522,10 @@ async function fetchAllPinsForArea(
       batch.map(async (cat, batchIdx) => {
         let pin = await fetchCategoryPinOverpass(cat, lat, lng);
         if (!pin) pin = await fetchCategoryPinMapboxFallback(cat, lat, lng, token);
-        if (!pin) pin = fallbackPin(cat, lat, lng, i + batchIdx);
+        if (pin && !isValidPlaceName(pin.name)) {
+          console.warn(`[CityMap] Skipping low-quality pin: "${pin.name}" for ${cat}`);
+          pin = null; // Forces the orchestrator to treat this as a failed find
+        }
         done++;
         onProgress(done);
         return [cat, pin] as const;
@@ -574,6 +605,16 @@ function injectPillStyles() {
       align-items: center;
       justify-content: center;
     }
+    .candid-pill-wrap::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; /* Adjust height of the "float" */
+      left: 50%;
+      width: 1px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.4);
+    }
+
     /* ═══ PILL ELEMENT (all visual styling & animations) ═══ */
     .candid-pill {
       display: inline-flex;
@@ -742,16 +783,23 @@ export default function CityMap({
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
+      style: 'mapbox://styles/mapbox/standard',
       center: [-122, 37.55], // default; Effect B flies to real zip
       zoom: 13,
-      pitch: 45,
+      pitch: 60,
       bearing: -10,
       antialias: true,
     });
 
     mapRef.current = map;
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
+
+    map.on('style.load', () => {
+      map.setConfigProperty('basemap', 'lightPreset', 'dusk'); 
+      map.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+      map.setConfigProperty('basemap', 'show3dObjects', true);
+      map.setConfigProperty('basemap', 'showTransitLabels', false);
+    });
 
     map.on('load', () => {
       mapLoadedRef.current = true;
@@ -790,26 +838,7 @@ export default function CityMap({
       });
 
       // ── 3D buildings — warm cream ──
-      if (!map.getLayer('3d-buildings')) {
-        map.addLayer({
-          id: '3d-buildings',
-          source: 'composite',
-          'source-layer': 'building',
-          filter: ['==', 'extrude', 'true'],
-          type: 'fill-extrusion',
-          minzoom: 13,
-          paint: {
-            'fill-extrusion-color': '#f5f2ed',
-            'fill-extrusion-height': [
-              'interpolate', ['linear'], ['zoom'], 13, 0, 14, ['get', 'height'],
-            ],
-            'fill-extrusion-base': [
-              'interpolate', ['linear'], ['zoom'], 13, 0, 14, ['get', 'min_height'],
-            ],
-            'fill-extrusion-opacity': 0.9,
-          },
-        });
-      }
+      
 
       // ── DIAGNOSTIC: Verify marker CSS is working ──
       console.log('[CityMap] Map loaded. Checking marker CSS...');
