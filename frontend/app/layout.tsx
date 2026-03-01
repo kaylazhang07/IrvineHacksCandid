@@ -3,7 +3,7 @@ import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import NavHeader from '@/components/NavHeader';
-import BottomNav from '@/components/BottomNav';
+import GlobalExportHub from '@/components/GlobalExportHub';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-serif' });
@@ -18,8 +18,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.variable} ${playfair.variable} ${inter.className} bg-[#F8F7F4] min-h-screen`}>
         <NavHeader />
+        <GlobalExportHub />
         <main className="pt-12 pb-16">{children}</main>
-        <BottomNav />
       </body>
     </html>
   );

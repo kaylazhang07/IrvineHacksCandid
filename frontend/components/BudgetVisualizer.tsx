@@ -4,19 +4,16 @@ import { PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, Zap } from 'lucide-react';
 import { CATEGORY_COLORS } from '@/lib/types';
+import { getBudgetForState } from '@/lib/budget-data';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { zipToStateAbbr } from '@/lib/utils';
 
 const WARM_BORDER = '1px solid rgba(180,155,120,0.22)';
 const CREAM = '#FDFCF8';
 const CARD_SHADOW = '0 4px 24px rgba(60,40,20,0.08), 0 1px 4px rgba(60,40,20,0.04)';
 
-interface Slice { id: string; label: string; baseAmount: number; color: string }
-const SLICES: Slice[] = [
-  { id: 'public_safety',  label: 'Public Safety',  baseAmount: 343.4, color: CATEGORY_COLORS.public_safety },
-  { id: 'education',      label: 'Education',      baseAmount: 258.9, color: CATEGORY_COLORS.education },
-  { id: 'infrastructure', label: 'Infrastructure', baseAmount: 189.1, color: CATEGORY_COLORS.transportation },
-  { id: 'healthcare',     label: 'Healthcare',     baseAmount: 157.3, color: CATEGORY_COLORS.healthcare },
-  { id: 'housing',        label: 'Housing',        baseAmount: 103.2, color: CATEGORY_COLORS.housing },
-];
+interface Slice { id: string; label: string; baseAmount: number; color: string; pct_change: number }
+
 
 const RIPPLE: Record<string, { up: string; down: string; flat: string }> = {
   public_safety: {
@@ -80,13 +77,16 @@ const getAmount = (s: Slice, c: Candidate) => s.baseAmount * (1 + (c.deltas[s.id
 const fmtM = (m: number) => `$${m.toFixed(1)}M`;
 
 export default function BudgetVisualizer() {
+  const { profile } = useUserProfile();
+  const stateAbbr = profile?.zip_code ? zipToStateAbbr(profile.zip_code) : 'CA';
+  const SLICES = getBudgetForState(stateAbbr).map(d => ({ ...d, baseAmount: d.amount, pct_change: d.pct_change }));
   const [selectedId, setSelectedId]     = useState('baseline');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [clickedSlice, setClickedSlice] = useState<string | null>(null);
 
   const candidate  = CANDIDATES.find(c => c.id === selectedId)!;
   const partyColor = PARTY_COLORS[candidate.party];
-  const chartData  = SLICES.map(s => ({ ...s, amount: getAmount(s, candidate), delta: candidate.deltas[s.id] ?? 0 }));
+  const chartData  = SLICES.map(s => ({ ...s, amount: s.baseAmount, delta: s.pct_change }));
   const total      = chartData.reduce((s, d) => s + d.amount, 0);
   const hovered    = hoveredIndex !== null ? chartData[hoveredIndex] : null;
 
@@ -108,10 +108,10 @@ export default function BudgetVisualizer() {
             Candid · Budget
           </p>
           <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 38px)', fontWeight: 800, color: '#1C1917', lineHeight: 1, letterSpacing: '-0.025em', fontFamily: 'Georgia, serif', marginBottom: 8 }}>
-            Where it Goes
+            {stateAbbr} Budget 2023
           </h1>
           <p style={{ fontSize: 13, color: '#78716C', lineHeight: 1.65 }}>
-            Pick a candidate to see how their plan reshapes city spending.
+            Real Census Bureau data. Click any category to see what the numbers mean for people.
           </p>
         </div>
 

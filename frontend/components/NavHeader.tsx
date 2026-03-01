@@ -56,6 +56,8 @@ export default function NavHeader() {
     { href: hasProfile ? '/ballot' : '/onboarding', label: 'Ballot' },
     { href: '/map', label: 'Map' },
     { href: '/simulator', label: 'Simulate' },
+    { href: '/races', label: 'Races' },
+    { href: '/budget', label: 'Spending' },
   ];
 
   return (

@@ -7,7 +7,6 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMeasures } from '@/hooks/useMeasures';
 import { MeasureCard } from '@/components/MeasureCard';
 import { getCategoryColor, prettifyTitle, zipToStateAbbr, stateDisplayName } from '@/lib/utils';
-import BallotExportHub from '@/components/BallotExportHub';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Measure {
@@ -290,7 +289,6 @@ export default function BallotPage() {
 
         </div>
       </div>
-      <BallotExportHub measures={sorted} />
     </div>
   );
 }

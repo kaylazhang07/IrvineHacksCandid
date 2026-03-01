@@ -48,81 +48,160 @@ async function exportPDF(measures: Measure[]) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  const W = 210, margin = 18, colW = W - margin * 2;
-
-  // Header band
-  doc.setFillColor(28, 25, 23);
-  doc.rect(0, 0, W, 22, 'F');
-  doc.setTextColor(253, 252, 248);
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.text('CANDID', margin, 14);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(168, 160, 154);
-  doc.text('Your Ballot Cheat Sheet', margin + 26, 14);
-
-  // Title
-  doc.setTextColor(28, 25, 23);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Ballot Summary', margin, 36);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(120, 113, 108);
-  doc.text(`${measures.length} measure${measures.length !== 1 ? 's' : ''} · Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`, margin, 43);
-
-  // Divider
-  doc.setDrawColor(180, 155, 120);
-  doc.setLineWidth(0.3);
-  doc.line(margin, 47, W - margin, 47);
-
-  let y = 56;
+  const W = 210, margin = 16, colW = W - margin * 2;
   const pageH = 297;
 
-  for (const m of measures) {
-    const summary = m.summary?.slice(0, 120) ?? 'No summary available.';
-    const titleLines = doc.splitTextToSize(m.title, colW - 12);
-    const summaryLines = doc.splitTextToSize(summary, colW - 12);
-    const rowH = 10 + titleLines.length * 5.5 + summaryLines.length * 4.5 + 6;
+  // ── Header band ──────────────────────────────────────────────────────────
+  doc.setFillColor(28, 25, 23);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(253, 252, 248);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('candid.', margin, 17);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(168, 160, 154);
+  doc.text('Your Ballot Cheat Sheet — bring this to the polls', margin + 30, 17);
 
-    if (y + rowH > pageH - 18) {
+  // ── Page title ────────────────────────────────────────────────────────────
+  doc.setTextColor(28, 25, 23);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Ballot Summary', margin, 46);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120, 113, 108);
+  doc.text(
+    `${measures.length} measure${measures.length !== 1 ? 's' : ''} · Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+    margin, 54
+  );
+
+  // Divider
+  doc.setDrawColor(220, 210, 195);
+  doc.setLineWidth(0.4);
+  doc.line(margin, 59, W - margin, 59);
+
+  // ── Instruction row ────────────────────────────────────────────────────────
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(160, 150, 140);
+  doc.text('For each measure: read the summary, check your impact, then circle YES or NO at the booth.', margin, 65);
+
+  let y = 74;
+
+  const CATEGORY_EMOJI: Record<string, string> = {
+    housing: 'Housing',
+    education: 'Education',
+    environment: 'Environment',
+    public_safety: 'Public Safety',
+    transportation: 'Transportation',
+    healthcare: 'Healthcare',
+    economy: 'Economy',
+    jobs: 'Jobs & Economy',
+    other: 'Other',
+  };
+
+  for (let i = 0; i < measures.length; i++) {
+    const m = measures[i];
+    const summary = m.summary ?? 'No summary available.';
+    const cat = CATEGORY_EMOJI[m.category] ?? m.category.replace(/_/g, ' ');
+
+    const titleLines   = doc.splitTextToSize(m.title, colW - 20);
+    const summaryLines = doc.splitTextToSize(summary, colW - 20);
+
+    const impact     = isFinite(+m.personal_annual_usd) ? +m.personal_annual_usd : 0;
+    const absImpact  = Math.abs(impact);
+    const impactStr  = absImpact === 0
+      ? 'No direct cost'
+      : `${impact < 0 ? 'Saves' : 'Costs'} ~$${absImpact >= 1000 ? (absImpact / 1000).toFixed(1) + 'k' : absImpact.toFixed(0)}/yr`;
+
+    // Card height: top padding + title + gap + summary + impact row + bottom padding
+    const cardH = 8 + titleLines.length * 6.5 + 5 + summaryLines.length * 5.2 + 12 + 8;
+
+    if (y + cardH > pageH - 20) {
       doc.addPage();
       y = 20;
     }
 
     // Card background
-    doc.setFillColor(253, 252, 248);
-    doc.setDrawColor(180, 155, 120);
-    doc.setLineWidth(0.2);
-    doc.roundedRect(margin, y, colW, rowH, 3, 3, 'FD');
+    doc.setFillColor(i % 2 === 0 ? 253 : 248, i % 2 === 0 ? 252 : 249, i % 2 === 0 ? 248 : 244);
+    doc.setDrawColor(210, 195, 175);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(margin, y, colW, cardH, 4, 4, 'FD');
 
-    // Category dot
-    const cat = m.category.replace(/_/g, ' ');
-    doc.setFontSize(7.5);
+    // Measure number badge
+    doc.setFillColor(28, 25, 23);
+    doc.roundedRect(margin + 5, y + 7, 8, 8, 2, 2, 'F');
+    doc.setTextColor(253, 252, 248);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(120, 113, 108);
-    doc.text(cat.toUpperCase(), margin + 5, y + 6);
+    doc.text(String(i + 1), margin + 6.8, y + 13, { align: 'center' });
+
+    // Category pill
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 90, 80);
+    doc.text(cat.toUpperCase(), margin + 17, y + 12);
 
     // Title
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(28, 25, 23);
-    doc.text(titleLines, margin + 5, y + 13);
+    doc.text(titleLines, margin + 6, y + 20);
+
+    const afterTitle = y + 20 + titleLines.length * 6.5 + 3;
 
     // Summary
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(87, 83, 78);
-    doc.text(summaryLines, margin + 5, y + 13 + titleLines.length * 5.5 + 1);
+    doc.setTextColor(70, 65, 60);
+    doc.text(summaryLines, margin + 6, afterTitle);
 
-    y += rowH + 4;
+    const afterSummary = afterTitle + summaryLines.length * 5.2 + 4;
+
+    // Divider before bottom row
+    doc.setDrawColor(220, 210, 195);
+    doc.setLineWidth(0.2);
+    doc.line(margin + 5, afterSummary, margin + colW - 5, afterSummary);
+
+    // Impact label
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(impact < 0 ? 21 : impact > 0 ? 180 : 120, impact < 0 ? 128 : impact > 0 ? 50 : 113, impact < 0 ? 61 : impact > 0 ? 20 : 108);
+    doc.text(impactStr, margin + 6, afterSummary + 7);
+
+    // YES / NO checkboxes on the right
+    const boxY = afterSummary + 2;
+    const boxRight = margin + colW - 8;
+
+    // NO box
+    doc.setDrawColor(180, 60, 60);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(boxRight - 14, boxY, 14, 8, 1.5, 1.5, 'S');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(180, 60, 60);
+    doc.text('NO', boxRight - 7, boxY + 5.5, { align: 'center' });
+
+    // YES box
+    doc.setDrawColor(21, 128, 61);
+    doc.roundedRect(boxRight - 30, boxY, 14, 8, 1.5, 1.5, 'S');
+    doc.setTextColor(21, 128, 61);
+    doc.text('YES', boxRight - 23, boxY + 5.5, { align: 'center' });
+
+    y += cardH + 5;
   }
 
-  // Footer
-  doc.setFontSize(7.5);
-  doc.setTextColor(168, 160, 154);
-  doc.text('Generated by Candid · candid.vote', margin, pageH - 8);
+  // ── Footer ─────────────────────────────────────────────────────────────────
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7.5);
+    doc.setTextColor(168, 160, 154);
+    doc.text('Generated by Candid · candid.vote', margin, pageH - 8);
+    doc.text(`Page ${p} of ${totalPages}`, W - margin, pageH - 8, { align: 'right' });
+  }
 
   doc.save('my-ballot-candid.pdf');
 }
