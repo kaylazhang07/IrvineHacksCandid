@@ -13,8 +13,9 @@ interface Props {
 
 export function MeasureCard({ measureId, title, summary, category, estimatedImpact }: Props) {
   const router = useRouter();
-  const color = getCategoryColor(category);
-  const positive = estimatedImpact >= 0;
+  const color        = getCategoryColor(category);
+  const safeImpact  = isFinite(+estimatedImpact) ? +estimatedImpact : 0;
+  const positive    = safeImpact >= 0;
 
   return (
     <motion.div
@@ -35,7 +36,7 @@ export function MeasureCard({ measureId, title, summary, category, estimatedImpa
           <p className="text-sm text-zinc-500 line-clamp-2">{summary}</p>
         </div>
         <div className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${positive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-          {formatDollar(estimatedImpact)}
+          {formatDollar(safeImpact)}
         </div>
       </div>
     </motion.div>

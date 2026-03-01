@@ -8,7 +8,6 @@ from ml.predict import predict_budget_shifts
 from cache import get_cache, set_cache
 from data.zip_coords import zip_to_state, zip_to_coords
 from routers.measures import SAMPLE_MEASURES
-from routers.map import _generate_pins, _lookup_measure_category
 import json
 
 router = APIRouter()
@@ -116,7 +115,7 @@ async def explain_measure(req: ExplainRequest):
         personal_impact_statement=generated.get("personal_impact_statement", ""),
         citations=citations,
         budget_shifts=budget_shifts,
-        map_pins=_generate_pins(req.measure_id, _lookup_measure_category(req.measure_id), *zip_to_coords(req.user.zip_code)),
+        map_pins=map_pins,
         confidence_score=confidence,
     )
 

@@ -18,16 +18,17 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
     <div className="bg-white border border-zinc-200 rounded-xl p-3 shadow text-xs">
       <p className="font-semibold mb-1 capitalize">{String(label).replace('_', ' ')}</p>
       {personal && <p>{formatDollar(personal.value)} for you</p>}
-      {citywide && <p>{citywide.value > 0 ? '+' : ''}{citywide.value.toFixed(1)}% citywide</p>}
+      {citywide && <p>{citywide.value > 0 ? '+' : ''}{(isFinite(citywide.value) ? citywide.value : 0).toFixed(1)}% citywide</p>}
     </div>
   );
 }
 
 export function BudgetChart({ shifts }: Props) {
+  const safeNum = (v: number) => isFinite(+v) ? +v : 0;
   const data = shifts.map(s => ({
     name: s.category,
-    personal_annual_usd: s.personal_annual_usd,
-    delta_pct: s.delta_pct,
+    personal_annual_usd: safeNum(s.personal_annual_usd),
+    delta_pct: safeNum(s.delta_pct),
     fill: getCategoryColor(s.category),
   }));
 

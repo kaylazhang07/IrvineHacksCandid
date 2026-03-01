@@ -27,7 +27,8 @@ export default function BallotPage() {
     }
   }, [profile, router]);
 
-  const sorted = (Array.isArray(measures) ? [...measures] : []).sort((a, b) => Math.abs(b.personal_annual_usd) - Math.abs(a.personal_annual_usd));
+  const toAbs = (v: number) => isFinite(+v) ? Math.abs(+v) : 0;
+  const sorted = (Array.isArray(measures) ? [...measures] : []).sort((a, b) => toAbs(b.personal_annual_usd) - toAbs(a.personal_annual_usd));
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">

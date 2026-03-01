@@ -7,8 +7,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDollar(n: number): string {
-  const abs = Math.abs(Math.round(n));
-  const sign = n >= 0 ? '+' : '-';
+  const safe = isFinite(+n) ? +n : 0;
+  const abs  = Math.abs(Math.round(safe));
+  const sign = safe >= 0 ? '+' : '-';
   return `${sign}$${abs.toLocaleString()}/yr`;
 }
 

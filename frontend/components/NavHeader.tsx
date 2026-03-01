@@ -55,6 +55,7 @@ export default function NavHeader() {
     { href: '/', label: 'Home' },
     { href: '/ballot', label: 'Ballot' },
     { href: '/map', label: 'Map' },
+    { href: '/simulator', label: 'Simulate' },
   ];
 
   return (
