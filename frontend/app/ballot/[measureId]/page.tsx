@@ -383,7 +383,7 @@ export default function MeasurePage() {
               </div>
 
               <h1 style={{
-                fontFamily: 'Georgia, "Times New Roman", serif',
+                fontFamily: 'var(--font-serif, Georgia, "Times New Roman", serif)',
                 fontSize: 27, fontWeight: 700, lineHeight: 1.22,
                 letterSpacing: '-0.015em', color: '#1C1917',
               }}>
@@ -423,15 +423,33 @@ export default function MeasurePage() {
                   </p>
                 </div>
 
-                {/* Gradient divider */}
-                <div style={{ height: 1, margin: "0 28px", background: "linear-gradient(90deg, transparent, rgba(180,155,120,0.3), transparent)" }} />
 
-                {/* Personal Impact */}
-                <div className="p-7 relative" style={{ background: '#FAFAF9' }}>
-                  {data.confidence_score != null && data.confidence_score >= 0.5 && (
-                    <ConfidenceSeal score={data.confidence_score} catColor={catColor} />
-                  )}
-                  <div className="flex items-center gap-2.5 mb-4">
+              </div>
+            </motion.div>
+
+            {/* ── Personalized Impact Card ─────────────────────────────── */}
+            {data.personal_impact_statement && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.45, ease: 'easeOut' }}
+                style={{
+                  borderRadius: 20,
+                  border: `1px solid ${catColor}28`,
+                  background: '#FFFFFF',
+                  boxShadow: CARD_SHADOW,
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Header bar */}
+                <div style={{
+                  background: `${catColor}0D`,
+                  borderBottom: `1px solid ${catColor}1A`,
+                  padding: '14px 24px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  flexWrap: 'wrap', gap: 10,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{
                       width: 3, height: 16, borderRadius: 99, flexShrink: 0,
                       background: netPositive ? '#16A34A' : '#DC2626',
@@ -444,17 +462,66 @@ export default function MeasurePage() {
                       What This Means For You
                     </p>
                   </div>
-                  <p style={{ fontSize: 14, color: '#3C3530', lineHeight: 1.78, paddingRight: 80 }}>
+
+                  {/* Profile context tags */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {profile?.housing_status && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
+                        padding: '3px 9px', borderRadius: 99,
+                        background: 'rgba(180,155,120,0.12)', color: '#78716C',
+                      }}>
+                        {profile.housing_status === 'renter' ? '🏠 Renter'
+                          : profile.housing_status === 'owner' ? '🏡 Owner'
+                          : '🏢 Other'}
+                      </span>
+                    )}
+                    {profile?.household_income_bracket && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
+                        padding: '3px 9px', borderRadius: 99,
+                        background: 'rgba(180,155,120,0.12)', color: '#78716C',
+                      }}>
+                        💰 {profile.household_income_bracket.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                    {profile?.has_children && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
+                        padding: '3px 9px', borderRadius: 99,
+                        background: 'rgba(180,155,120,0.12)', color: '#78716C',
+                      }}>
+                        👶 Has children
+                      </span>
+                    )}
+                    {profile?.zip_code && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
+                        padding: '3px 9px', borderRadius: 99,
+                        background: 'rgba(180,155,120,0.12)', color: '#78716C',
+                      }}>
+                        📍 {profile.zip_code}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{ padding: '22px 24px', position: 'relative' }}>
+                  {data.confidence_score != null && data.confidence_score >= 0.5 && (
+                    <ConfidenceSeal score={data.confidence_score} catColor={catColor} />
+                  )}
+                  <p style={{ fontSize: 14, color: '#3C3530', lineHeight: 1.82, paddingRight: 76 }}>
                     {data.personal_impact_statement}
                   </p>
                   {data.citations?.length ? (
-                    <p style={{ fontSize: 11, color: '#A8A09A', marginTop: 16 }}>
+                    <p style={{ fontSize: 11, color: '#A8A09A', marginTop: 14 }}>
                       Based on {data.citations.length} cited source{data.citations.length !== 1 ? 's' : ''}
                     </p>
                   ) : null}
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            )}
 
             {/* ── Budget impact — slides up 100ms after hero ─────────────────── */}
             {safeShifts.length > 0 && (
@@ -483,7 +550,7 @@ export default function MeasurePage() {
                   {/* Total — serif, larger, count-up */}
                   <div style={{ textAlign: 'right' }}>
                     <div style={{
-                      fontFamily: 'Georgia, "Times New Roman", serif',
+                      fontFamily: 'var(--font-serif, Georgia, "Times New Roman", serif)',
                       fontSize: 22, fontWeight: 700, lineHeight: 1,
                       fontVariantNumeric: 'tabular-nums',
                       color: netPositive ? '#15803D' : '#B91C1C',

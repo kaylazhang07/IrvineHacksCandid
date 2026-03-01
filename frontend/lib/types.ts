@@ -110,14 +110,17 @@ export type CategoryType =
   | 'public_safety'
   | 'environment'
   | 'healthcare'
+  | 'economy'
   | 'other';
 
+// Paper & Pastels — muted enough to feel stationery-like, saturated enough for text legibility
 export const CATEGORY_COLORS: Record<CategoryType, string> = {
-  housing: '#6366f1',
-  education: '#f59e0b',
-  transportation: '#10b981',
-  public_safety: '#ef4444',
-  environment: '#22c55e',
-  healthcare: '#06b6d4',
-  other: '#94a3b8',
+  housing:       '#7C6FD4', // lavender
+  education:     '#C2955A', // sand
+  transportation:'#5BA89F', // dusty teal / mint
+  public_safety: '#C9706C', // dusty rose
+  environment:   '#6AAB74', // sage green
+  healthcare:    '#5B9BC4', // soft blue
+  economy:       '#B8944A', // warm gold
+  other:         '#94a3b8', // slate
 };

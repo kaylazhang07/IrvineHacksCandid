@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Citation } from '@/lib/types';
 
-// ── Official title lookup ─────────────────────────────────────────────────────
 const OFFICIAL_TITLES: Record<string, string> = {
   'crs-k12-funding':        'Congressional Research Service: K–12 Education Funding (Title I)',
   'american-teacher-act':   'H.R. 2021 — American Teacher Act (119th Congress)',
@@ -42,8 +41,8 @@ function titleFromId(id: string): string {
   return id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-
 const _BP: Record<string,string> = {HR:'House Bill',S:'Senate Bill',HRES:'House Resolution',SRES:'Senate Resolution',HJRES:'House Joint Resolution',SJRES:'Senate Joint Resolution',HB:'House Bill',SB:'Senate Bill',AB:'Assembly Bill'};
+
 function extractBillName(text: string): string | null {
   if (!text) return null;
   let m = text.match(/cited as (?:the )?(.+?)(?:\.|$)/i) || text.match(/known as (?:the )?(.+?)(?:\.|$)/i);
@@ -52,6 +51,7 @@ function extractBillName(text: string): string | null {
   if (m && m[1] && m[1].length > 5) return m[1].trim();
   return null;
 }
+
 function prettifyChunkId(id: string): string {
   const clean = id.replace(/\s*C\d+$/i, '').trim();
   const m = clean.match(/^(HR|S|HRES|SRES|HJRES|SJRES|HB|SB|AB)\s*(\d+)/i);
@@ -64,7 +64,6 @@ function domainFrom(url: string): string {
   catch { return 'Source'; }
 }
 
-// ── Source pill — solid fill + arrow slide on hover ───────────────────────────
 function SourceLink({ url, catColor }: { url: string; catColor: string }) {
   const [hovered, setHovered] = useState(false);
   return (
@@ -97,6 +96,62 @@ function SourceLink({ url, catColor }: { url: string; catColor: string }) {
   );
 }
 
+// ── Per-citation legal text toggle ────────────────────────────────────────────
+function LegalTextToggle({ chunkText, catColor }: { chunkText: string; catColor: string }) {
+  const [showLegal, setShowLegal] = useState(false);
+  if (!chunkText) return null;
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        onClick={() => setShowLegal(p => !p)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          color: showLegal ? catColor : '#A8A09A',
+          background: showLegal ? `${catColor}10` : 'transparent',
+          border: `1px solid ${showLegal ? catColor + '40' : 'rgba(180,155,120,0.22)'}`,
+          borderRadius: 99, padding: '3px 10px', cursor: 'pointer',
+          transition: 'all 0.18s ease',
+        }}
+      >
+        <svg style={{ width: 9, height: 9 }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        {showLegal ? 'Hide legal text' : 'Show original text'}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {showLegal && (
+          <motion.div
+            key="legal"
+            initial={{ height: 0, opacity: 0, marginTop: 0 }}
+            animate={{ height: 'auto', opacity: 1, marginTop: 10 }}
+            exit={{ height: 0, opacity: 0, marginTop: 0 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              background: 'rgba(180,155,120,0.06)',
+              border: '1px solid rgba(180,155,120,0.2)',
+              borderRadius: 10, padding: '12px 14px',
+              borderLeft: `3px solid ${catColor}55`,
+            }}>
+              <p style={{
+                fontSize: 11.5, color: '#78716C', lineHeight: 1.8,
+                fontFamily: 'var(--font-serif, Georgia, "Times New Roman", serif)',
+                fontStyle: 'italic',
+              }}>
+                {chunkText}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props {
   citations: Citation[];
@@ -113,13 +168,11 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
 
   return (
     <div style={{
-      borderRadius: 20,
-      overflow: 'hidden',
-      border: WARM_BORDER,
-      background: '#FFFFFF',
+      borderRadius: 20, overflow: 'hidden',
+      border: WARM_BORDER, background: '#FFFFFF',
       boxShadow: CARD_SHADOW,
     }}>
-      {/* ── Accordion trigger ──────────────────────────────────────────────── */}
+      {/* ── Accordion trigger ───────────────────────────────────────────────── */}
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between"
@@ -128,7 +181,6 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         <div className="flex items-center gap-3">
-          {/* Icon chip */}
           <div style={{
             width: 30, height: 30, borderRadius: 9, flexShrink: 0,
             background: `${catColor}14`,
@@ -138,12 +190,9 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
             </svg>
           </div>
-
           <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1917', letterSpacing: '-0.01em' }}>
             Sources &amp; Citations
           </span>
-
-          {/* Count badge */}
           <span style={{
             fontSize: 11, fontWeight: 600, color: '#78716C',
             background: 'rgba(180,155,120,0.12)',
@@ -152,8 +201,6 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
             {citations.length}
           </span>
         </div>
-
-        {/* Animated chevron */}
         <motion.svg
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.22, ease: 'easeOut' }}
@@ -164,7 +211,7 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
         </motion.svg>
       </button>
 
-      {/* ── Smooth accordion body ───────────────────────────────────────────── */}
+      {/* ── Accordion body ───────────────────────────────────────────────────── */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -193,32 +240,35 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
                       : 'none',
                   }}
                 >
-                  {/* High-contrast sans-serif title */}
+                  {/* Title */}
                   <p style={{
                     fontSize: 13.5, fontWeight: 700, letterSpacing: '-0.01em',
-                    color: '#1C1917', lineHeight: 1.45,
-                    marginBottom: 8,
+                    color: '#1C1917', lineHeight: 1.45, marginBottom: 8,
                   }}>
                     {title}
                   </p>
 
-                  {/* Description — open line-height to prevent clustering */}
-                  {(c.plain_translation || c.chunk_text) && (
+                  {/* Plain translation */}
+                  {c.plain_translation && (
                     <p style={{
                       fontSize: 13, color: '#78716C', lineHeight: 1.85,
-                      marginBottom: 14,
+                      marginBottom: 12,
                     }}>
-                      {c.plain_translation || c.chunk_text}
+                      {c.plain_translation}
                     </p>
                   )}
 
-                  {/* Footer: thin relevance bar (supporting detail) + source pill */}
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                  {/* ── NEW: legal text toggle ─────────────────────────────── */}
+                  {c.chunk_text && c.chunk_text !== c.plain_translation && (
+                    <LegalTextToggle chunkText={c.chunk_text} catColor={catColor} />
+                  )}
+
+                  {/* Footer: relevance bar + source link */}
+                  <div className="flex items-center justify-between gap-4 flex-wrap" style={{ marginTop: 14 }}>
                     <div className="flex items-center gap-2" style={{ minWidth: 0, flex: '1 1 120px', maxWidth: 240 }}>
                       <span style={{ fontSize: 10, color: '#B8B0A8', flexShrink: 0, letterSpacing: '0.04em' }}>
                         relevance
                       </span>
-                      {/* Thinner, more subtle track */}
                       <div style={{
                         flex: 1, height: 3, borderRadius: 99, overflow: 'hidden',
                         background: `${catColor}12`,
@@ -238,7 +288,6 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
                         {relevance}%
                       </span>
                     </div>
-
                     {c.source_url && <SourceLink url={c.source_url} catColor={catColor} />}
                   </div>
                 </motion.div>
