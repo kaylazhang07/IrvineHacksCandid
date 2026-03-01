@@ -11,11 +11,88 @@ interface Props {
   initialZip: string;
   measureMap: Record<string, string>; // category → measure_id
   onPinClick: (pin: MapPin) => void;
+  selectedMeasureId?: string | null;
   activeCategories?: Set<string>;
   /** Impact scores per category: 0–1 scale (0 = negative, 0.5 = neutral, 1 = very positive) */
   impactScores?: Record<string, number>;
   /** Ballot measure descriptions keyed by measure_id */
   measureDescriptions?: Record<string, string>;
+}
+// Add a radius map at the top of the file
+const CATEGORY_RADIUS: Record<string, number> = {
+  healthcare:   12000,  // 12km — hospitals serve wide areas
+  education:    12000,  // 12km — universities are regional
+  transit:      5000,
+  greenspace:   5000,
+  grocery:      4000,
+  default:      5000,
+}; 
+
+/** How "official" a place type is — lower = more prominent, picked first */
+const TYPE_RANK: Record<string, Record<string, number>> = {
+  healthcare:    { hospital: 1, clinic: 2, centre: 2, doctors: 4, pharmacy: 5 },
+  education:     { university: 1, college: 1, school: 2, library: 3, kindergarten: 4 },
+  transportation:{ station: 1, halt: 2, bus_station: 3, bus_stop: 5 },
+  public_safety: { police: 1, fire_station: 1 },
+  environment:   { nature_reserve: 1, park: 2, garden: 3 },
+  government:    { townhall: 1, government: 1, courthouse: 2 },
+  economy:       { financial: 1, company: 2, bank: 3, atm: 5 },
+};
+
+/**
+ * Keywords in a place's name that signal it's a major institution.
+ * Matching any of these adds a prominence bonus so it beats nearby smaller ones.
+ */
+const PROMINENCE_KEYWORDS: Record<string, string[]> = {
+  healthcare:    [
+    'medical center', 'medical centre', 'hospital', 'health system',
+    'health center', 'regional', 'university', 'children', 'memorial',
+    'cedars', 'ucla', 'usc', 'kaiser', 'providence', 'adventist',
+  ],
+  education:     [
+    'university', 'college', 'institute', 'campus', 'academy',
+    'district', 'unified', 'polytechnic', 'state',
+  ],
+  transportation:[
+    'international', 'central', 'union', 'metro', 'transit center',
+  ],
+  environment:   [
+    'state park', 'national', 'preserve', 'botanical', 'arboretum',
+  ],
+  government:    [
+    'city hall', 'federal', 'county', 'municipal', 'courthouse', 'civic',
+  ],
+};
+
+/**
+ * Score a candidate POI — higher is better.
+ *
+ * Components:
+ *   - type rank   (hospital=1 → 900 pts, doctor=4 → 600 pts)
+ *   - name keywords (major institution → +400 pts)
+ *   - distance penalty (−1 pt per 100 m — a tie-breaker, not the main factor)
+ *
+ * This means a hospital 5 km away beats a doctor's office 0.1 km away.
+ */
+function scoreCandidate(
+  candidate: { name: string; type?: string; distance: number },
+  category: string,
+): number {
+  // Type rank score (1–5, lower rank = better)
+  const rank = TYPE_RANK[category]?.[candidate.type ?? ''] ?? 3;
+  let score = (6 - rank) * 150; // rank 1 → 750 pts, rank 5 → 150 pts
+
+  // Prominence keyword bonus
+  const nameLower = candidate.name.toLowerCase();
+  const keywords = PROMINENCE_KEYWORDS[category] ?? [];
+  if (keywords.some((kw) => nameLower.includes(kw))) {
+    score += 400;
+  }
+
+  // Small distance penalty so truly equal results pick the closer one
+  score -= candidate.distance / 100;
+
+  return score;
 }
 
 const isValidPlaceName = (name: string | undefined): boolean => {
@@ -39,13 +116,24 @@ const isValidPlaceName = (name: string | undefined): boolean => {
   return true;
 };
 // ─── Visual Config ────────────────────────────────────────────────────────────────
+// Muted, sophisticated accent colors — Pale Rose, Muted Lavender, Sage, etc.
 const PILL_COLORS: Record<string, string> = {
-  housing: '#818cf8', education: '#a78bfa', transportation: '#38bdf8',
-  public_safety: '#fb7185', environment: '#4ade80', healthcare: '#f472b6',
-  economy: '#fbbf24', water: '#38bdf8', civil_rights: '#c084fc',
-  government: '#94a3b8', family: '#fb923c', immigration: '#a78bfa',
-  technology: '#22d3ee', taxes: '#fbbf24', foreign_policy: '#94a3b8',
-  other: '#94a3b8',
+  housing:       '#8B7EC8', // Muted Lavender
+  education:     '#C47B76', // Pale Rose
+  transportation:'#6A9EB8', // Muted Steel Blue
+  public_safety: '#B87560', // Muted Terracotta
+  environment:   '#6B9E82', // Sage
+  healthcare:    '#B5789C', // Muted Mauve
+  economy:       '#A88E44', // Muted Amber
+  water:         '#6A9EB8', // Muted Steel Blue
+  civil_rights:  '#9B82C2', // Soft Violet
+  government:    '#8A9AA8', // Warm Slate
+  family:        '#C08070', // Muted Coral
+  immigration:   '#9B82C2', // Soft Violet
+  technology:    '#5EA8B8', // Muted Cyan
+  taxes:         '#A88E44', // Muted Amber
+  foreign_policy:'#8A9AA8', // Warm Slate
+  other:         '#8A9AA8', // Warm Slate
 };
 
 const PILL_ICONS: Record<string, string> = {
@@ -232,7 +320,7 @@ function isValidForCategory(category: string, tags: Record<string, string> | und
   return false;
 }
 
-type PinLocation = { name: string; lat: number; lon: number; type?: string };
+type PinLocation = { name: string; lat: number; lon: number; type?: string; address?: string | null};
 type PinMap = Record<string, PinLocation| null>;
 
 const pinCache: Record<string, PinMap> = {};
@@ -242,7 +330,7 @@ function cacheKey(lat: number, lng: number): string {
 }
 
 // ─── Cache version — bump this when you change query logic ───────────────────────
-const PIN_CACHE_VERSION = 3;
+const PIN_CACHE_VERSION = 5;
 
 // ─── Prioritized Overpass queries per category ────────────────────────────────────
 const PRIORITY_QUERIES: Record<string, Array<{ q: string; r: number }>> = {
@@ -327,15 +415,18 @@ async function fetchCategoryPinOverpass(
   lat: number,
   lng: number,
 ): Promise<PinLocation | null> {
+  const categoryRadius = CATEGORY_RADIUS[category] ?? CATEGORY_RADIUS.default;
   const priorities = PRIORITY_QUERIES[category];
   if (!priorities) return null;
 
-  for (const { q: tmpl, r: radius } of priorities) {
+  for (const { q: tmpl, r: queryRadius } of priorities) {
+    const radius = queryRadius ?? categoryRadius;
     const inner = tmpl
       .replaceAll('{LAT}', lat.toFixed(6))
       .replaceAll('{LNG}', lng.toFixed(6))
       .replaceAll('{R}', String(radius));
     const query = `[out:json][timeout:10];(${inner});out center 10;`;
+
     try {
       const res = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
@@ -343,9 +434,10 @@ async function fetchCategoryPinOverpass(
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       if (!res.ok) continue;
+
       const data = await res.json();
       const elements: any[] = data?.elements ?? [];
-      
+
       const candidates = elements
         .map((el: any) => {
           const elLat = el.lat ?? el.center?.lat;
@@ -353,17 +445,13 @@ async function fetchCategoryPinOverpass(
           if (elLat == null || elLon == null) return null;
           if (!isValidForCategory(category, el.tags)) return null;
 
-          // 1. Try to get a REAL name from the API tags
           const rawName =
             el.tags?.name ??
             el.tags?.['name:en'] ??
             el.tags?.operator ??
             el.tags?.brand;
 
-         
-          if (!isValidPlaceName(rawName)) {
-            return null; // Skip this element entirely — coordinates aren't trustworthy
-          }
+          if (!isValidPlaceName(rawName)) return null;
 
           return {
             name: rawName!.trim(),
@@ -373,16 +461,23 @@ async function fetchCategoryPinOverpass(
             distance: haversineMeters(lat, lng, elLat, elLon),
           };
         })
-        .filter(Boolean) as (PinLocation & { distance: number })[];
+        .filter(Boolean) as (PinLocation & { distance: number; type: string })[];
 
+      // ── FIX 1: skip this tier entirely if it produced zero VALID candidates ──
+      // (old code would return null here and move on, but the loop `continue`d
+      //  anyway — the real bug was that we never sorted by score)
       if (candidates.length === 0) continue;
-      candidates.sort((a, b) => a.distance - b.distance);
+
+      // ── FIX 2: pick the most PROMINENT result, not just the nearest ──────────
+      candidates.sort((a, b) => scoreCandidate(b, category) - scoreCandidate(a, category));
       const best = candidates[0];
       return { name: best.name, lat: best.lat, lon: best.lon, type: best.type };
+
     } catch {
       continue;
     }
   }
+
   return null;
 }
 
@@ -463,11 +558,26 @@ async function fetchCategoryPinMapboxFallback(
           lon: fLon,
         };
       }
-    } catch {
+    } catch (err){
+      console.warn(`Overpass query failed for ${category}:`, err);
       continue;
     }
   }
   return null;
+}
+
+async function reverseGeocode(
+  lat: number, lon: number, token: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?types=address&limit=1&access_token=${token}`
+    );
+    const data = await res.json();
+    return data.features?.[0]?.place_name ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Geometric fallback (last resort) ────────────────────────────────────────────
@@ -525,6 +635,10 @@ async function fetchAllPinsForArea(
         if (pin && !isValidPlaceName(pin.name)) {
           console.warn(`[CityMap] Skipping low-quality pin: "${pin.name}" for ${cat}`);
           pin = null; // Forces the orchestrator to treat this as a failed find
+        }
+
+        if (pin) {
+          pin.address = await reverseGeocode(pin.lat, pin.lon, token);
         }
         done++;
         onProgress(done);
@@ -608,76 +722,78 @@ function injectPillStyles() {
     .candid-pill-wrap::after {
       content: '';
       position: absolute;
-      bottom: -40px; /* Adjust height of the "float" */
+      bottom: -9px;
       left: 50%;
-      width: 1px;
-      height: 40px;
-      background: rgba(255, 255, 255, 0.4);
+      width: 1.5px;
+      height: 9px;
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 0 0 2px 2px;
+      transform: translateX(-50%);
     }
 
-    /* ═══ PILL ELEMENT (all visual styling & animations) ═══ */
+    /* ═══ PILL ELEMENT — Solid Parchment Squircle ═══ */
     .candid-pill {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 5px 12px 5px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
+      gap: 6px;
+      padding: 6px 11px 6px 8px;
+      border-radius: 11px;
+      font-size: 11.5px;
+      font-weight: 500;
       font-family: system-ui, -apple-system, sans-serif;
+      letter-spacing: 0.5px;
       line-height: 1.2;
       white-space: nowrap;
-      color: #fff;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.1) inset;
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-                  box-shadow 0.3s ease,
-                  filter 0.3s ease,
-                  opacity 0.3s ease;
-      transform: scale(1);
+      color: #1C1917;
+      background: rgba(253, 252, 248, 0.96);
+      border: 1px solid rgba(0, 0, 0, 0.07);
+      box-shadow:
+        0 1px 3px  rgba(0, 0, 0, 0.06),
+        0 8px 20px rgba(0, 0, 0, 0.09),
+        0 20px 50px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  box-shadow 0.2s ease;
       pointer-events: auto;
       user-select: none;
     }
     .candid-pill:hover {
-      transform: scale(1.08);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.15) inset;
+      transform: scale(1.05);
+      box-shadow:
+        0 2px 6px  rgba(0, 0, 0, 0.08),
+        0 12px 32px rgba(0, 0, 0, 0.12),
+        0 28px 60px rgba(0, 0, 0, 0.10);
       z-index: 10;
     }
-    .candid-pill-icon {
-      font-size: 14px;
-      line-height: 1;
+    .candid-pill-dot {
       flex-shrink: 0;
+      border-radius: 50%;
+      width: 6px;
+      height: 6px;
     }
     .candid-pill-label {
-      max-width: 140px;
+      max-width: 130px;
       overflow: hidden;
       text-overflow: ellipsis;
+      color: #1C1917;
     }
-    /* ═══ IMPACT ANIMATIONS ═══ */
+    /* ═══ IMPACT STATE — subtle, static ═══ */
     .candid-pill[data-impact="positive"] {
-      animation: candid-glow 2.5s ease-in-out infinite;
-    }
-    @keyframes candid-glow {
-      0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,0.15), 0 0 0 0px rgba(74,222,128,0); }
-      50%       { box-shadow: 0 2px 12px rgba(0,0,0,0.15), 0 0 20px 4px rgba(74,222,128,0.35); }
+      border-color: rgba(107, 158, 130, 0.45);
     }
     .candid-pill[data-impact="negative"] {
-      filter: saturate(0.35) brightness(0.85);
-      animation: candid-negative 3s ease-in-out infinite;
-      outline: 1.5px dashed rgba(251,113,133,0.6);
-      outline-offset: 3px;
-    }
-    @keyframes candid-negative {
-      0%, 100% { opacity: 0.75; }
-      50%       { opacity: 0.55; }
+      opacity: 0.68;
     }
     .candid-pill[data-impact="neutral"] {
-      animation: candid-neutral 4s ease-in-out infinite;
+      opacity: 0.88;
     }
-    @keyframes candid-neutral {
-      0%, 100% { opacity: 0.85; }
-      50%       { opacity: 0.7; }
+    /* ═══ SELECTED STATE ═══ */
+    .candid-pill.selected {
+      box-shadow:
+        0 2px 8px  rgba(0, 0, 0, 0.12),
+        0 16px 40px rgba(0, 0, 0, 0.18),
+        0 0 0 2px  rgba(28, 25, 23, 0.14);
+      transform: scale(1.08);
+      z-index: 20;
     }
     /* ═══ CATEGORY VISIBILITY TOGGLE ═══ */
     .candid-pill-wrap[data-hidden="true"] {
@@ -735,6 +851,7 @@ export default function CityMap({
   initialZip,
   measureMap,
   onPinClick,
+  selectedMeasureId,
   activeCategories,
   impactScores,
   measureDescriptions,
@@ -747,11 +864,12 @@ export default function CityMap({
       el: HTMLElement;
       pill: HTMLElement;
       category: string;
+      measure_id: string;
       marker: { remove: () => void };
-      popup?: any;
     }>
   >([]);
   const [pinLoad, setPinLoad] = useState({ active: false, done: 0, total: 0 });
+  const [mapZoom, setMapZoom] = useState<number>(17.5);
   const selectedElRef = useRef<HTMLElement | null>(null);
   const onPinClickRef = useRef(onPinClick);
 
@@ -800,6 +918,8 @@ export default function CityMap({
       map.setConfigProperty('basemap', 'show3dObjects', true);
       map.setConfigProperty('basemap', 'showTransitLabels', false);
     });
+
+    map.on('zoom', () => setMapZoom(map.getZoom()));
 
     map.on('load', () => {
       mapLoadedRef.current = true;
@@ -891,11 +1011,11 @@ export default function CityMap({
       if (cancelled) return;
       const [lng, lat] = center;
 
-      // 2. Fly to ZIP
-      mapRef.current?.flyTo({ center, zoom: 14, pitch: 0, bearing: 0, duration: 1200 });
+      // 2. Fly to ZIP with cinematic 3D camera
+      mapRef.current?.flyTo({ center, zoom: 17.5, pitch: 60, bearing: -15, speed: 1.2, curve: 1.4 });
       await new Promise<void>((resolve) => {
         if (mapRef.current) mapRef.current.once('moveend', resolve);
-        else setTimeout(resolve, 1400);
+        else setTimeout(resolve, 2000);
       });
       if (cancelled) return;
 
@@ -919,7 +1039,7 @@ export default function CityMap({
             lat: poi.lat,
             lon: poi.lon,
             category: cat,
-            address: poi.name,
+            address: poi.address ?? poi.name,
           } as MapPin;
         })
         .filter(Boolean) as MapPin[];
@@ -930,6 +1050,8 @@ export default function CityMap({
       selectedElRef.current = null;
 
       // 6. Place markers with impact-based animations
+      let firstPinCoords: [number, number] | null = null;
+
       function placeMarkers() {
         if (cancelled || !mapRef.current) return;
         const mapboxgl = require('mapbox-gl');
@@ -937,9 +1059,10 @@ export default function CityMap({
         pins.forEach((pin, i) => {
           if (!isFinite(pin.lat) || !isFinite(pin.lon)) return;
 
-          const color = PILL_COLORS[pin.category] ?? PILL_COLORS.other;
-          const icon = PILL_ICONS[pin.category] ?? '📋';
-          const score = impactScores?.[pin.category];
+          if (!firstPinCoords) firstPinCoords = [pin.lon, pin.lat];
+
+          const color  = PILL_COLORS[pin.category] ?? PILL_COLORS.other;
+          const score  = impactScores?.[pin.category];
           const impact = getImpactLevel(score);
 
           // ── Outer wrapper: Mapbox uses this for anchor measurement ──
@@ -951,11 +1074,9 @@ export default function CityMap({
           const pill = document.createElement('div');
           pill.className = 'candid-pill';
           pill.dataset.impact = impact;
-          pill.style.background = `linear-gradient(135deg, ${color}ee, ${color}bb)`;
-          pill.style.setProperty('--pill-glow', color + '99');
-          pill.style.animationDelay = `${i * 0.08}s`;
+          pill.style.borderTop = `2.5px solid ${color}`;
           pill.innerHTML = `
-            <span class="candid-pill-icon">${icon}</span>
+            <span class="candid-pill-dot" style="background:${color}"></span>
             <span class="candid-pill-label">${pin.label}</span>
           `;
 
@@ -964,43 +1085,6 @@ export default function CityMap({
           if (activeCategories && !activeCategories.has(pin.category)) {
             wrapper.style.display = 'none';
           }
-
-          // ── Popup ──
-          const narrative = getImpactNarrative(pin.category, pin.label, score);
-          const impactLabel =
-            impact === 'positive' ? '↑ Positive Impact'
-            : impact === 'negative' ? '↓ Negative Impact'
-            : '→ Neutral Impact';
-          const impactIcon =
-            impact === 'positive' ? '🟢' : impact === 'negative' ? '🔴' : '🔵';
-
-          const popupHTML = `
-            <div style="padding:12px 14px 8px;display:flex;align-items:center;gap:8px;
-              border-bottom:1px solid rgba(255,255,255,0.08);">
-              <span style="font-size:22px;line-height:1">${icon}</span>
-              <div>
-                <div style="font-weight:700;font-size:14px;color:#f1f5f9">${pin.label}</div>
-                <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;
-                  letter-spacing:0.05em">${pin.category.replace(/_/g, ' ')}</div>
-              </div>
-            </div>
-            <div style="padding:10px 14px 14px;font-size:12.5px;line-height:1.55;color:#cbd5e1">
-              ${narrative.replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f1f5f9">$1</strong>')}
-              <div style="margin-top:8px;padding:6px 10px;border-radius:8px;font-size:11.5px;
-                font-weight:600;display:inline-flex;align-items:center;gap:5px;
-                background:${impact === 'positive' ? 'rgba(74,222,128,0.15)' : impact === 'negative' ? 'rgba(251,113,133,0.15)' : 'rgba(148,163,184,0.15)'};
-                color:${impact === 'positive' ? '#4ade80' : impact === 'negative' ? '#fb7185' : '#94a3b8'}">
-                ${impactIcon} ${impactLabel}
-              </div>
-            </div>
-          `;
-
-          const popup = new mapboxgl.Popup({
-            offset: 25,
-            closeButton: true,
-            maxWidth: '280px',
-            className: 'candid-popup',
-          }).setHTML(popupHTML);
 
           // ── Click → select + callback ──
           wrapper.addEventListener('click', () => {
@@ -1016,13 +1100,13 @@ export default function CityMap({
             anchor: 'bottom',
           })
             .setLngLat([pin.lon, pin.lat])
-            .setPopup(popup)
             .addTo(mapRef.current);
 
           markersRef.current.push({
             el: wrapper,
             pill,
             category: pin.category,
+            measure_id: pin.measure_id,
             marker,
           });
         });
@@ -1037,12 +1121,19 @@ export default function CityMap({
 
       setPinLoad((prev) => ({ ...prev, active: false }));
 
-      // Tilt into 3D after pins settle
+      // Glide to first pin after markers land
       setTimeout(() => {
-        if (!cancelled) {
-          mapRef.current?.easeTo({ pitch: 45, bearing: -10, duration: 800 });
+        if (!cancelled && mapRef.current && firstPinCoords) {
+          mapRef.current.flyTo({
+            center: firstPinCoords,
+            zoom: 17.5,
+            pitch: 60,
+            bearing: -15,
+            speed: 1.2,
+            curve: 1.4,
+          });
         }
-      }, 200);
+      }, 300);
     }
 
     loadPins();
@@ -1059,6 +1150,22 @@ export default function CityMap({
       el.style.display = visible ? 'flex' : 'none';
     });
   }, [activeCategories]);
+
+  // ── Effect D-extra: Sync selected pill with parent selectedMeasureId ──────────
+  useEffect(() => {
+    markersRef.current.forEach(({ pill, measure_id }) => {
+      if (selectedMeasureId && measure_id === selectedMeasureId) {
+        pill.classList.add('selected');
+      } else {
+        pill.classList.remove('selected');
+      }
+    });
+    // Also clear the local ref if parent deselected
+    if (!selectedMeasureId && selectedElRef.current) {
+      selectedElRef.current.classList.remove('selected');
+      selectedElRef.current = null;
+    }
+  }, [selectedMeasureId]);
 
   // ── Effect D: Live-update impact animations when scores change ────────────────
   useEffect(() => {
@@ -1095,6 +1202,32 @@ export default function CityMap({
           height: '100%',
         }}
       />
+
+      {/* Zoom-out hint — fades once user zooms out past 14 */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 80,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 15,
+          pointerEvents: 'none',
+          opacity: mapZoom >= 14 ? 1 : 0,
+          transition: 'opacity 0.5s ease',
+          background: 'rgba(253, 252, 248, 0.72)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(0,0,0,0.07)',
+          borderRadius: 12,
+          padding: '8px 14px',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        }}
+      >
+        <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500, letterSpacing: '0.01em' }}>
+          Zoom out to view impact across other categories
+        </span>
+      </div>
     </div>
   );
 }
