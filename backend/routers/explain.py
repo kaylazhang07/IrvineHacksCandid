@@ -2,7 +2,7 @@ from typing import Optional
 import re
 from fastapi import APIRouter
 from models import ExplainRequest, ExplainResponse, Citation
-from rag.retrieve import retrieve_chunks, get_collection
+from rag.retrieve import retrieve_chunks, filter_federal
 from rag.rerank import rerank_chunks
 from rag.generate import generate_explanation
 from ml.predict import predict_budget_shifts
@@ -82,12 +82,13 @@ async def explain_measure(req: ExplainRequest):
     jurisdiction = "state" if state in ["CA", "NY", "TX", "PA"] else "city"
 
     # Try RAG first
-    chunks = retrieve_chunks(measure_text, jurisdiction, state)
+    chunks = filter_federal(retrieve_chunks(measure_text, state, jurisdiction, measure_id=req.measure_id), req.measure_id)
     ranked_chunks = rerank_chunks(chunks, req.user, measure_title)
+    ranked_chunks = filter_federal(ranked_chunks, req.measure_id)
 
     # If no RAG chunks, use the curated sources from our measure data
     if not ranked_chunks and lookup and lookup.get("sources"):
-        ranked_chunks = lookup["sources"]
+        ranked_chunks = filter_federal(lookup["sources"], req.measure_id)
     elif not ranked_chunks:
         ranked_chunks = [{
             "chunk_id": "measure-text",
