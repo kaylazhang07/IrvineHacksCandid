@@ -42,6 +42,23 @@ function titleFromId(id: string): string {
   return id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+
+const _BP: Record<string,string> = {HR:'House Bill',S:'Senate Bill',HRES:'House Resolution',SRES:'Senate Resolution',HJRES:'House Joint Resolution',SJRES:'Senate Joint Resolution',HB:'House Bill',SB:'Senate Bill',AB:'Assembly Bill'};
+function extractBillName(text: string): string | null {
+  if (!text) return null;
+  let m = text.match(/cited as (?:the )?(.+?)(?:\.|$)/i) || text.match(/known as (?:the )?(.+?)(?:\.|$)/i);
+  if (m && m[1]) return m[1].trim();
+  m = text.match(/^The\s+(.+?\s+Act(?:\s+of\s+\d{4})?)(?:[,.\s])/i);
+  if (m && m[1] && m[1].length > 5) return m[1].trim();
+  return null;
+}
+function prettifyChunkId(id: string): string {
+  const clean = id.replace(/\s*C\d+$/i, '').trim();
+  const m = clean.match(/^(HR|S|HRES|SRES|HJRES|SJRES|HB|SB|AB)\s*(\d+)/i);
+  if (m) return (_BP[m[1].toUpperCase()] || m[1]) + ' ' + m[2];
+  return titleFromId(id);
+}
+
 function domainFrom(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ''); }
   catch { return 'Source'; }
@@ -159,7 +176,8 @@ export function CitationSection({ citations, catColor = '#2563EB' }: Props) {
             style={{ overflow: 'hidden', borderTop: '1px solid rgba(180,155,120,0.16)' }}
           >
             {citations.map((c, i) => {
-              const title     = OFFICIAL_TITLES[c.chunk_id] ?? titleFromId(c.chunk_id ?? `source-${i + 1}`);
+              const _rawTitle = OFFICIAL_TITLES[c.chunk_id] ?? extractBillName(c.plain_translation) ?? extractBillName(c.chunk_text) ?? prettifyChunkId(c.chunk_id ?? `source-${i + 1}`);
+              const title = _rawTitle.length > 80 ? _rawTitle.slice(0, 77) + '...' : _rawTitle;
               const relevance = Math.round((c.relevance_score ?? 0) * 100);
 
               return (

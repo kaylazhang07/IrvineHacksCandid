@@ -6,6 +6,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useExplanation } from '@/hooks/useExplanation';
 import { CitationSection } from '@/components/CitationSection';
 import { BudgetShift } from '@/lib/types';
+import { prettifyTitle } from '@/lib/utils';
 
 // ── Pop colors + their pastel tints (dual-tone bar tracks) ───────────────────
 const POP: Record<string, string> = {
@@ -64,9 +65,15 @@ function formatImpact(dollars: number): string {
   return `${sign}$${abs.toFixed(0)}`;
 }
 
-function detectCategory(measureId: string, title: string): string {
+function detectCategory(measureId: string, title: string, shifts: BudgetShift[] = []): string {
   const hay = (measureId + ' ' + title).toLowerCase();
-  return Object.keys(POP).find(k => hay.includes(k.replace('_', ' '))) ?? 'other';
+  const found = Object.keys(POP).find(k => hay.includes(k.replace('_', ' ')));
+  if (found) return found;
+  if (shifts.length > 0) {
+    const sorted = [...shifts].sort((a, b) => Math.abs(safeAnnual(b)) - Math.abs(safeAnnual(a)));
+    if (sorted[0] && sorted[0].category) return sorted[0].category;
+  }
+  return 'other';
 }
 
 // ── Odometer — count-up animation ────────────────────────────────────────────
@@ -243,7 +250,7 @@ export default function MeasurePage() {
   const safeShifts  = (data?.budget_shifts ?? []).map(s => ({ ...s, _annual: safeAnnual(s) }));
   const netAnnual   = safeShifts.reduce((sum, s) => sum + s._annual, 0);
   const netPositive = netAnnual >= 0;
-  const category    = data ? detectCategory(measureId, data.measure_title) : 'other';
+  const category    = data ? detectCategory(measureId, data.measure_title, data.budget_shifts) : 'other';
   const catColor    = POP[category] ?? POP.other;
   const maxAbs      = Math.max(...safeShifts.map(s => Math.abs(s._annual)), 1);
 
@@ -353,7 +360,7 @@ export default function MeasurePage() {
         )}
 
         {data && (
-          <div className="flex flex-col gap-7">
+          <div className="flex flex-col gap-9">
 
             {/* ── Title — enters first ───────────────────────────────────────── */}
             <motion.div
@@ -380,7 +387,7 @@ export default function MeasurePage() {
                 fontSize: 27, fontWeight: 700, lineHeight: 1.22,
                 letterSpacing: '-0.015em', color: '#1C1917',
               }}>
-                {data.measure_title}
+                {prettifyTitle(data.measure_title, measureId)}
               </h1>
             </motion.div>
 
@@ -395,12 +402,12 @@ export default function MeasurePage() {
                 boxShadow: CARD_SHADOW,
               }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2">
+              <div className="flex flex-col">
 
                 {/* Official Summary */}
                 <div
-                  className="p-7 border-b md:border-b-0 md:border-r"
-                  style={{ background: '#FFFFFF', borderColor: 'rgba(180,155,120,0.2)' }}
+                  className="p-7 pb-5"
+                  style={{ background: '#FFFFFF' }}
                 >
                   <div className="flex items-center gap-2.5 mb-4">
                     <div style={{ width: 3, height: 16, borderRadius: 99, background: '#2563EB', flexShrink: 0 }} />
@@ -416,9 +423,12 @@ export default function MeasurePage() {
                   </p>
                 </div>
 
+                {/* Gradient divider */}
+                <div style={{ height: 1, margin: "0 28px", background: "linear-gradient(90deg, transparent, rgba(180,155,120,0.3), transparent)" }} />
+
                 {/* Personal Impact */}
                 <div className="p-7 relative" style={{ background: '#FAFAF9' }}>
-                  {data.confidence_score != null && (
+                  {data.confidence_score != null && data.confidence_score >= 0.5 && (
                     <ConfidenceSeal score={data.confidence_score} catColor={catColor} />
                   )}
                   <div className="flex items-center gap-2.5 mb-4">

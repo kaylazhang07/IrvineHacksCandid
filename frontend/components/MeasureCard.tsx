@@ -1,7 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { formatDollar, getCategoryColor } from '@/lib/utils';
+import { formatDollar, getCategoryColor, prettifyTitle } from '@/lib/utils';
 
 interface Props {
   measureId: string;
@@ -32,7 +32,7 @@ export function MeasureCard({ measureId, title, summary, category, estimatedImpa
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
             <span className="text-xs font-medium capitalize" style={{ color }}>{category.replace('_', ' ')}</span>
           </div>
-          <h3 className="font-semibold text-zinc-900 leading-snug mb-1">{title}</h3>
+          <h3 className="font-semibold text-zinc-900 leading-snug mb-1">{prettifyTitle(title, measureId)}</h3>
           <p className="text-sm text-zinc-500 line-clamp-2">{summary}</p>
         </div>
         <div className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${positive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
