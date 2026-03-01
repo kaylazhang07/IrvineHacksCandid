@@ -108,11 +108,13 @@ const PERSONAS = [
 function Ticker() {
   const repeated = [...MEASURES, ...MEASURES];
   return (
-    <div className="overflow-hidden border-y border-zinc-200 py-2.5 bg-white">
+    // CHANGED: border color is warmer, slightly more opaque
+    <div className="overflow-hidden border-y border-zinc-200/80 py-2.5 bg-white/60 backdrop-blur-sm">
       <div className="flex animate-ticker whitespace-nowrap will-change-transform">
         {repeated.map((m, i) => (
           <span key={i} className="mx-8 text-[11px] font-mono text-zinc-400 tracking-[0.12em] uppercase flex items-center gap-3 flex-shrink-0">
-            <span className={`w-1.5 h-1.5 rounded-full inline-block flex-shrink-0 ${['bg-blue-400','bg-green-400','bg-red-400','bg-yellow-400','bg-violet-400'][i % 5]}`} />
+            {/* CHANGED: dot shapes replaced with small diamonds for editorial feel */}
+            <span className={`w-1 h-1 rotate-45 inline-block flex-shrink-0 ${['bg-blue-400','bg-green-400','bg-red-400','bg-yellow-400','bg-violet-400'][i % 5]}`} />
             {m}
           </span>
         ))}
@@ -124,19 +126,31 @@ function Ticker() {
 function FeatureCard({ icon: Icon, title, desc, color, bg, index }: typeof FEATURES[0] & { index: number }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
+
+  // CHANGED: odd-indexed cards get a top offset to break perfect grid alignment
+  const topOffsets = ['mt-0', 'mt-5', 'mt-0', 'mt-0', 'mt-5'];
+
   return (
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 32 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.5, delay: index * 0.09, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col gap-4 p-6 rounded-2xl border border-zinc-200 bg-white hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-default"
+      // CHANGED: left border accent in category color, softer outer border, warmer bg, no rounded-2xl
+      className={`flex flex-col gap-4 p-6 rounded-xl border border-zinc-200/70 bg-[#FEFDF9] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-default ${topOffsets[index]}`}
+      style={{ borderLeftWidth: 2, borderLeftColor: color + '55' }}
     >
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: bg }}>
-        <Icon className="w-5 h-5" style={{ color }} />
+      {/* CHANGED: smaller, more restrained icon treatment — no heavy bg box */}
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: color + '12' }}>
+          <Icon className="w-4 h-4" style={{ color }} />
+        </div>
+        {/* CHANGED: a thin colored rule signals category without a background blob */}
+        <div className="h-px flex-1" style={{ background: `linear-gradient(90deg, ${color}30, transparent)` }} />
       </div>
       <div>
-        <h3 className="font-bold text-zinc-900 text-base mb-1.5">{title}</h3>
+        {/* CHANGED: tighter tracking on card titles */}
+        <h3 className="font-bold text-zinc-900 text-[15px] mb-1.5 tracking-tight">{title}</h3>
         <p className="text-zinc-500 text-sm leading-relaxed">{desc}</p>
       </div>
     </motion.div>
@@ -147,22 +161,43 @@ function StepItem({ n, title, desc, index }: { n: string; title: string; desc: s
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
   const colors = ['#2563EB', '#16A34A', '#DC2626', '#D97706'];
+
+  // CHANGED: staggered horizontal offsets — each step is at a different indent
+  const offsets = ['md:ml-0', 'md:ml-14', 'md:ml-6', 'md:ml-20'];
+
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, x: -20 }}
-      animate={inView ? { opacity: 1, x: 0 } : {}}
-      transition={{ duration: 0.5, delay: index * 0.08 }}
-      className="flex gap-5 items-start md:pl-14 relative"
+      // CHANGED: animate from y instead of x — softer entrance, no horizontal jump
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+      // CHANGED: horizontal offset + bottom border separator instead of vertical line + circle badge
+      className={`flex gap-5 items-start ${offsets[index]} pb-9 border-b border-zinc-100/80 last:border-0 last:pb-0`}
     >
-      <div
-        className="absolute left-0 w-10 h-10 rounded-full border-2 border-zinc-100 flex items-center justify-center hidden md:flex flex-shrink-0"
-        style={{ backgroundColor: colors[index] + '15', borderColor: colors[index] + '30' }}
-      >
-        <span className="text-[11px] font-black" style={{ fontFamily: 'var(--font-syne)', color: colors[index] }}>{n}</span>
+      {/* CHANGED: large faint italic serif numeral instead of a numbered circle badge */}
+      <div className="flex-shrink-0 w-12 text-right pt-0.5 hidden md:block">
+        <span
+          style={{
+            fontFamily: 'var(--font-newsreader)',
+            fontSize: 48,
+            fontStyle: 'italic',
+            color: colors[index],
+            opacity: 0.18,
+            lineHeight: 1,
+            display: 'block',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {/* Display 1-4 instead of "01"-"04" — cleaner at large size */}
+          {index + 1}
+        </span>
       </div>
-      <div>
-        <h3 className="font-bold text-zinc-900 text-base mb-1">{title}</h3>
+
+      <div className="flex-1">
+        {/* CHANGED: a short colored dash above the title — editorial punctuation */}
+        <div className="w-6 h-[1.5px] mb-3 rounded-full" style={{ background: colors[index] }} />
+        <h3 className="font-bold text-zinc-900 text-[15px] mb-1.5 tracking-tight">{title}</h3>
         <p className="text-zinc-500 text-sm leading-relaxed">{desc}</p>
       </div>
     </motion.div>
@@ -182,36 +217,71 @@ function DemoMockup() {
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className="w-full max-w-3xl mx-auto"
     >
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
-        {PERSONAS.map((p, i) => (
-          <button
-            key={i}
-            onClick={() => setPersona(i)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
-              persona === i
-                ? 'bg-zinc-900 text-white border-zinc-900'
-                : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Browser chrome */}
-      <div className="rounded-2xl overflow-hidden border border-zinc-200 shadow-xl">
-        <div className="bg-zinc-100 px-4 py-3 flex items-center gap-3 border-b border-zinc-200">
+      {/* CHANGED: browser frame wraps the tabs too — tabs live inside chrome, not above it */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          // CHANGED: multi-layer realistic box-shadow instead of single shadow-xl
+          boxShadow:
+            '0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.07), 0 16px 40px rgba(0,0,0,0.08), 0 40px 80px rgba(0,0,0,0.05)',
+          border: '1px solid rgba(0,0,0,0.10)',
+        }}
+      >
+        {/* CHANGED: warm gradient chrome bar instead of flat bg-zinc-100 */}
+        <div
+          className="px-4 py-3 flex items-center gap-3 border-b"
+          style={{
+            background: 'linear-gradient(180deg, #E6E2D9 0%, #DAD5CB 100%)',
+            borderColor: 'rgba(0,0,0,0.10)',
+          }}
+        >
+          {/* CHANGED: macOS-accurate traffic light colors + inset highlight shadow */}
           <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-400" />
-            <div className="w-3 h-3 rounded-full bg-yellow-400" />
-            <div className="w-3 h-3 rounded-full bg-green-400" />
+            <div className="w-3 h-3 rounded-full" style={{ background: '#FF5F57', boxShadow: 'inset 0 0.5px 0.75px rgba(255,255,255,0.5), 0 0.5px 1.5px rgba(0,0,0,0.28)' }} />
+            <div className="w-3 h-3 rounded-full" style={{ background: '#FFBD2E', boxShadow: 'inset 0 0.5px 0.75px rgba(255,255,255,0.5), 0 0.5px 1.5px rgba(0,0,0,0.28)' }} />
+            <div className="w-3 h-3 rounded-full" style={{ background: '#28C840', boxShadow: 'inset 0 0.5px 0.75px rgba(255,255,255,0.5), 0 0.5px 1.5px rgba(0,0,0,0.28)' }} />
           </div>
-          <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-zinc-400 font-mono border border-zinc-200">
+          {/* CHANGED: translucent URL bar with backdrop blur — more glass-like */}
+          <div
+            className="flex-1 rounded px-3 py-1 text-xs text-zinc-400 font-mono border"
+            style={{
+              background: 'rgba(255,255,255,0.60)',
+              borderColor: 'rgba(0,0,0,0.11)',
+            }}
+          >
             candid.app/ballot/measure-j
           </div>
         </div>
 
-        {/* App UI */}
+        {/* CHANGED: profile switcher as a segmented control INSIDE the chrome, below the URL bar */}
+        <div
+          className="px-4 py-2 border-b flex items-center gap-1.5"
+          style={{ background: '#F0EDE6', borderColor: 'rgba(0,0,0,0.08)' }}
+        >
+          <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest mr-1">Profile:</span>
+          {/* CHANGED: segmented control tabs — physical, tactile, not floating pill buttons */}
+          <div
+            className="inline-flex rounded-lg overflow-hidden p-0.5 gap-0.5"
+            style={{ background: 'rgba(0,0,0,0.08)' }}
+          >
+            {PERSONAS.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => setPersona(i)}
+                className="px-3 py-1 text-[10px] font-semibold rounded-md transition-all duration-150"
+                style={
+                  persona === i
+                    ? { background: '#fff', color: '#18181b', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }
+                    : { background: 'transparent', color: '#78716c' }
+                }
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* App UI — unchanged */}
         <div className="bg-[#F9F7F2] p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -287,6 +357,7 @@ function DemoMockup() {
         </div>
       </div>
 
+      {/* CHANGED: label sits below the frame — feels like a caption */}
       <p className="text-center text-zinc-400 text-xs mt-4 font-mono">
         toggle profiles above — watch the explanation adapt in real time
       </p>
@@ -302,18 +373,50 @@ export default function Home() {
 
       {/* ── HERO ──────────────────────────────────────────── */}
       <section className="noise-bg-light relative min-h-screen flex flex-col overflow-hidden bg-[#F9F7F2] pt-16">
-        {/* Soft pastel blobs */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none opacity-60"
-          style={{ background: 'radial-gradient(circle, #BFDBFE 0%, transparent 65%)', transform: 'translate(25%, -25%)' }} />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none opacity-50"
-          style={{ background: 'radial-gradient(circle, #FCA5A5 0%, transparent 65%)', transform: 'translate(-25%, 25%)' }} />
-        <div className="absolute top-1/2 left-1/4 w-[350px] h-[350px] rounded-full pointer-events-none opacity-35"
-          style={{ background: 'radial-gradient(circle, #BBF7D0 0%, transparent 65%)' }} />
-        <div className="absolute top-1/3 right-1/4 w-[250px] h-[250px] rounded-full pointer-events-none opacity-30"
-          style={{ background: 'radial-gradient(circle, #FDE68A 0%, transparent 65%)' }} />
-        {/* Subtle grid */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
+
+        {/* CHANGED: organic blob shapes — irregular border-radius + rotation replaces perfect circles */}
+        <div
+          className="absolute top-0 right-0 pointer-events-none opacity-50"
+          style={{
+            width: 580,
+            height: 480,
+            background: 'radial-gradient(ellipse at 65% 35%, #BFDBFE 0%, transparent 65%)',
+            borderRadius: '30% 70% 55% 45% / 60% 38% 62% 40%',
+            transform: 'translate(18%, -22%) rotate(14deg)',
+          }}
+        />
+        <div
+          className="absolute bottom-0 left-0 pointer-events-none opacity-40"
+          style={{
+            width: 520,
+            height: 440,
+            background: 'radial-gradient(ellipse at 35% 68%, #FCA5A5 0%, transparent 62%)',
+            borderRadius: '62% 38% 28% 72% / 48% 62% 38% 52%',
+            transform: 'translate(-18%, 22%) rotate(-10deg)',
+          }}
+        />
+        {/* CHANGED: small amber accent blob — organic, offset from center */}
+        <div
+          className="absolute pointer-events-none opacity-35"
+          style={{
+            width: 260,
+            height: 220,
+            top: '38%',
+            left: '30%',
+            background: 'radial-gradient(ellipse, #FDE68A 0%, transparent 70%)',
+            borderRadius: '42% 58% 62% 38% / 52% 32% 68% 48%',
+            transform: 'rotate(28deg)',
+          }}
+        />
+
+        {/* CHANGED: dot grid instead of line grid — more editorial, less SaaS template */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        />
 
         <Ticker />
 
@@ -323,7 +426,9 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-200 bg-white text-zinc-500 text-xs font-medium tracking-wide uppercase mb-8 shadow-sm"
+            // CHANGED: eyebrow chip has a warm left border accent instead of a generic pill
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-200 bg-white/80 text-zinc-500 text-xs font-medium tracking-wide uppercase mb-8 shadow-sm backdrop-blur-sm"
+            style={{ borderLeftWidth: 2, borderLeftColor: '#22c55e' }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             Built on 54,000+ pieces of data
@@ -333,7 +438,8 @@ export default function Home() {
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="text-5xl md:text-7xl lg:text-[82px] font-black leading-[0.92] tracking-[-0.04em] text-zinc-900 max-w-4xl mb-6"
+            // CHANGED: tighter tracking and line-height for denser editorial heading
+            className="text-5xl md:text-7xl lg:text-[82px] font-black leading-[0.88] tracking-[-0.05em] text-zinc-900 max-w-4xl mb-6"
             style={{ fontFamily: 'var(--font-syne)' }}
           >
             WHAT'S ON{' '}
@@ -367,33 +473,37 @@ export default function Home() {
           >
             <Link
               href="/onboarding"
-              className="px-8 py-3.5 rounded-full font-semibold text-white text-sm bg-zinc-900 hover:bg-zinc-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
+              // CHANGED: primary CTA has a subtle inset border highlight for depth
+              className="px-8 py-3.5 rounded-full font-semibold text-white text-sm bg-zinc-900 hover:bg-zinc-800 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.06)' }}
             >
               My Ballot →
             </Link>
             <a
               href="#features"
-              className="px-8 py-3.5 rounded-full font-semibold text-zinc-600 text-sm border border-zinc-300 bg-white hover:bg-zinc-50 transition-all"
+              className="px-8 py-3.5 rounded-full font-semibold text-zinc-600 text-sm border border-zinc-300/80 bg-white/70 hover:bg-white transition-all backdrop-blur-sm"
             >
               How it works ↓
             </a>
           </motion.div>
 
-          {/* Stat row */}
+          {/* CHANGED: stat row uses small colored square markers instead of just colored numbers */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.55 }}
-            className="flex flex-wrap justify-center gap-10 mt-16 pt-10 border-t border-zinc-200"
+            className="flex flex-wrap justify-center gap-10 mt-16 pt-10 border-t border-zinc-200/70"
           >
             {[
               { n: '54,000+', label: 'Pieces of data', color: '#2563EB' },
               { n: '< 3s', label: 'Personalized explanation', color: '#16A34A' },
               { n: '94%', label: 'Citation accuracy', color: '#DC2626' },
             ].map(({ n, label, color }) => (
-              <div key={label} className="text-center">
+              <div key={label} className="text-center flex flex-col items-center gap-1.5">
+                {/* CHANGED: small colored square above stat — editorial marker */}
+                <div className="w-3 h-[2px] rounded-full mb-0.5" style={{ background: color }} />
                 <div className="text-2xl font-black text-zinc-900" style={{ fontFamily: 'var(--font-syne)', color }}>{n}</div>
-                <div className="text-xs text-zinc-400 mt-0.5">{label}</div>
+                <div className="text-xs text-zinc-400">{label}</div>
               </div>
             ))}
           </motion.div>
@@ -401,11 +511,18 @@ export default function Home() {
       </section>
 
       {/* ── FEATURES ──────────────────────────────────────── */}
-      <section id="features" className="bg-white px-6 md:px-12 py-24 border-t border-zinc-100">
+      {/* CHANGED: background is warm off-white, not clinical white */}
+      <section id="features" className="bg-[#FDFCF9] px-6 md:px-12 py-24 border-t border-zinc-100">
         <div className="max-w-5xl mx-auto">
           <div className="mb-14 text-center">
-            <span className="inline-block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400 mb-3">What Candid does</span>
-            <h2 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-tight" style={{ fontFamily: 'var(--font-syne)' }}>
+            {/* CHANGED: eyebrow label has a thin horizontal rule either side */}
+            <div className="flex items-center justify-center gap-4 mb-3">
+              <div className="h-px w-8 bg-zinc-300" />
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">What Candid does</span>
+              <div className="h-px w-8 bg-zinc-300" />
+            </div>
+            {/* CHANGED: tighter tracking on section heading */}
+            <h2 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-[-0.03em]" style={{ fontFamily: 'var(--font-syne)' }}>
               Five layers.{' '}
               <span className="font-normal italic" style={{ fontFamily: 'var(--font-newsreader)', color: '#2563EB' }}>
                 one answer.
@@ -413,6 +530,7 @@ export default function Home() {
             </h2>
           </div>
 
+          {/* Grid layout unchanged — asymmetry comes from mt-5 on alternating cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             {FEATURES.slice(0, 3).map((f, i) => <FeatureCard key={f.title} {...f} index={i} />)}
           </div>
@@ -424,15 +542,35 @@ export default function Home() {
 
       {/* ── DEMO ──────────────────────────────────────────── */}
       <section className="noise-bg-light relative overflow-hidden bg-[#EDE9DF] px-6 md:px-12 py-24 border-t border-zinc-200">
-        {/* Blobs */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none opacity-40"
-          style={{ background: 'radial-gradient(circle, #BFDBFE 0%, transparent 70%)', transform: 'translate(20%, -30%)' }} />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none opacity-30"
-          style={{ background: 'radial-gradient(circle, #FCA5A5 0%, transparent 70%)', transform: 'translate(-20%, 30%)' }} />
+        {/* CHANGED: organic blob shapes in demo section too */}
+        <div
+          className="absolute top-0 right-0 pointer-events-none opacity-35"
+          style={{
+            width: 480,
+            height: 400,
+            background: 'radial-gradient(ellipse, #BFDBFE 0%, transparent 68%)',
+            borderRadius: '40% 60% 50% 50% / 55% 45% 55% 45%',
+            transform: 'translate(22%, -28%) rotate(8deg)',
+          }}
+        />
+        <div
+          className="absolute bottom-0 left-0 pointer-events-none opacity-25"
+          style={{
+            width: 380,
+            height: 320,
+            background: 'radial-gradient(ellipse, #FCA5A5 0%, transparent 68%)',
+            borderRadius: '55% 45% 35% 65% / 45% 55% 45% 55%',
+            transform: 'translate(-18%, 28%) rotate(-6deg)',
+          }}
+        />
         <div className="relative z-10 max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <span className="inline-block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-3">Live demo</span>
-            <h2 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-tight" style={{ fontFamily: 'var(--font-syne)' }}>
+            <div className="flex items-center justify-center gap-4 mb-3">
+              <div className="h-px w-8 bg-zinc-400/50" />
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Live demo</span>
+              <div className="h-px w-8 bg-zinc-400/50" />
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-[-0.03em]" style={{ fontFamily: 'var(--font-syne)' }}>
               Same measure.{' '}
               <span className="font-normal italic" style={{ fontFamily: 'var(--font-newsreader)', color: '#DC2626' }}>
                 different lives.
@@ -448,27 +586,36 @@ export default function Home() {
 
       {/* ── HOW IT WORKS ──────────────────────────────────── */}
       <section className="noise-bg-light relative overflow-hidden bg-[#F9F7F2] px-6 md:px-12 py-24 border-t border-zinc-200">
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <span className="inline-block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400 mb-3">Under the hood</span>
-            <h2 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-tight" style={{ fontFamily: 'var(--font-syne)' }}>
+        {/* CHANGED: dot grid consistent with hero section */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.055) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        />
+        <div className="relative z-10 max-w-3xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center gap-4 mb-3">
+              <div className="h-px w-8 bg-zinc-300" />
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Under the hood</span>
+              <div className="h-px w-8 bg-zinc-300" />
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-[-0.03em]" style={{ fontFamily: 'var(--font-syne)' }}>
               How it works
             </h2>
           </div>
 
-          <div className="relative">
-            <div className="absolute left-5 top-2 bottom-2 w-px bg-zinc-200 hidden md:block" />
-            <div className="flex flex-col gap-10">
-              {STEPS.map((step, i) => <StepItem key={step.n} {...step} index={i} />)}
-            </div>
+          {/* CHANGED: no vertical connector line — steps separated by bottom border + staggered offsets */}
+          <div className="flex flex-col gap-0">
+            {STEPS.map((step, i) => <StepItem key={step.n} {...step} index={i} />)}
           </div>
 
           <div className="text-center mt-16">
             <Link
               href="/onboarding"
-              className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-semibold text-white text-sm bg-zinc-900 hover:bg-zinc-800 hover:scale-[1.02] transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-semibold text-white text-sm bg-zinc-900 hover:bg-zinc-800 hover:scale-[1.02] transition-all"
+              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.06)' }}
             >
               Try it on your ballot →
             </Link>
@@ -478,10 +625,16 @@ export default function Home() {
 
       {/* ── FOOTER ────────────────────────────────────────── */}
       <footer className="relative overflow-hidden bg-[#F2EFE9] border-t border-zinc-200 px-6 md:px-12 py-14">
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        {/* CHANGED: dot grid in footer too for consistency */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
+          }}
+        />
         <div className="relative z-10 max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 pb-8 border-b border-zinc-300">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 pb-8 border-b border-zinc-300/60">
             <span className="text-zinc-900 font-black tracking-[-0.03em] text-2xl" style={{ fontFamily: 'var(--font-syne)' }}>
               candid<span className="text-blue-500">.</span>
             </span>
