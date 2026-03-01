@@ -71,7 +71,7 @@ const FEATURES = [
 
 const STEPS = [
   { n: '01', title: 'Tell us about your life', desc: 'Five quick questions about your housing, income, family, and what you care about. Takes 60 seconds.' },
-  { n: '02', title: 'We pull real legislation', desc: 'Candid searches 30,000+ chunked legislative documents in our vector database, filtered to your jurisdiction.' },
+  { n: '02', title: 'We pull real legislation', desc: 'Candid searches 54,000+ pieces of legislative data in our vector database, filtered to your jurisdiction.' },
   { n: '03', title: 'The algorithm reads it for you', desc: 'Our AI reads the raw legalese and writes a plain-English summary — personalized to your exact profile.' },
   { n: '04', title: 'You get the full picture', desc: 'Dollar impact for your household, citations to real clauses, confidence scores, and a live map of affected streets.' },
 ];
@@ -326,7 +326,7 @@ export default function Home() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-200 bg-white text-zinc-500 text-xs font-medium tracking-wide uppercase mb-8 shadow-sm"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            Built on 30,000+ legislative documents
+            Built on 54,000+ pieces of data
           </motion.div>
 
           <motion.h1
@@ -356,7 +356,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="text-zinc-500 text-lg md:text-xl max-w-xl leading-relaxed mb-10"
           >
-            Simple explanations, personalized to who you are. Grounded in 30,000+ real legislation documents.
+            Simple explanations, personalized to who you are. Grounded in 54,000+ pieces of real legislative data.
           </motion.p>
 
           <motion.div
@@ -387,7 +387,7 @@ export default function Home() {
             className="flex flex-wrap justify-center gap-10 mt-16 pt-10 border-t border-zinc-200"
           >
             {[
-              { n: '30,000+', label: 'Legislative documents', color: '#2563EB' },
+              { n: '54,000+', label: 'Pieces of data', color: '#2563EB' },
               { n: '< 3s', label: 'Personalized explanation', color: '#16A34A' },
               { n: '94%', label: 'Citation accuracy', color: '#DC2626' },
             ].map(({ n, label, color }) => (
