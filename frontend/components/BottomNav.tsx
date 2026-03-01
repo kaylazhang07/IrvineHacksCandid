@@ -9,6 +9,7 @@ export default function BottomNav() {
   const isBallot = pathname.startsWith('/ballot');
   const isRaces  = pathname.startsWith('/races');
   const isMap    = pathname.startsWith('/map');
+  const isBudget = pathname.startsWith('/budget');
 
   const tab = (href: string, active: boolean, label: string, icon: JSX.Element) => (
     <Link href={href} className={`flex-1 flex flex-col items-center justify-center text-xs gap-0.5 transition-colors ${active ? 'text-zinc-900 font-semibold' : 'text-zinc-400 hover:text-zinc-600'}`}>
@@ -26,6 +27,9 @@ export default function BottomNav() {
       )}
       {tab('/map', isMap, 'Map',
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+      )}
+      {tab('/budget', isBudget, 'Spending',
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
       )}
     </nav>
   );

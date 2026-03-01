@@ -6,7 +6,8 @@ import { X, ArrowUpRight } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMeasures } from '@/hooks/useMeasures';
 import { MeasureCard } from '@/components/MeasureCard';
-import { getCategoryColor, prettifyTitle } from '@/lib/utils';
+import { getCategoryColor, prettifyTitle, zipToStateAbbr, stateDisplayName } from '@/lib/utils';
+import BallotExportHub from '@/components/BallotExportHub';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Measure {
@@ -29,9 +30,9 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 // ── Official Ballot Header ─────────────────────────────────────────────────────
 function BallotHeader({ zip }: { zip?: string }) {
+  const stateName = zip ? stateDisplayName(zipToStateAbbr(zip)) : 'Your State';
   return (
     <div className="px-8 pt-8 pb-6 text-center border-b border-slate-100">
-      {/* Decorative corner marks — like a real ballot */}
       <p className="text-[9px] font-bold tracking-[0.3em] text-slate-300 uppercase mb-1.5">
         OFFICIAL BALLOT — GENERAL ELECTION
       </p>
@@ -39,7 +40,7 @@ function BallotHeader({ zip }: { zip?: string }) {
         className="text-xl font-bold text-slate-800 mb-1"
         style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}
       >
-        Commonwealth of Pennsylvania
+        {stateName}
       </h2>
       {zip && (
         <p className="text-[11px] text-slate-400 mb-4 tracking-wide">
@@ -289,6 +290,7 @@ export default function BallotPage() {
 
         </div>
       </div>
+      <BallotExportHub measures={sorted} />
     </div>
   );
 }

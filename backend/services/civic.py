@@ -260,9 +260,10 @@ def build_races_for_zip(zip_code: str) -> list:
             "candidates":  senate_candidates,
         })
 
+    house_races = []
     for rep in house_members:
         dist = rep.get("district", 0)
-        races.append({
+        house_races.append({
             "race_id":     f"us-house-{state.lower()}-{dist}",
             "position":    f"U.S. House — {state} District {dist}",
             "jurisdiction": "Federal",
@@ -270,5 +271,8 @@ def build_races_for_zip(zip_code: str) -> list:
             "district":    str(dist),
             "candidates":  [rep],
         })
+    # Sort districts numerically so District 1 appears before District 10
+    house_races.sort(key=lambda r: int(r["district"] or 0))
+    races.extend(house_races)
 
     return races
