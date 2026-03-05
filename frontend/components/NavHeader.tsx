@@ -57,7 +57,6 @@ export default function NavHeader() {
     { href: '/map', label: 'Map' },
     { href: '/simulator', label: 'Simulate' },
     { href: '/races', label: 'Races' },
-    { href: '/budget', label: 'Spending' },
   ];
 
   return (
