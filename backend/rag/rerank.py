@@ -47,7 +47,7 @@ def rerank_chunks(chunks: list[dict], user, measure_title: str) -> list[dict]:
 
     try:
         response = client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-8b-instant",
             max_tokens=512,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
