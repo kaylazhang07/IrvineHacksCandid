@@ -12,11 +12,7 @@ backend/.env
 
 # misc
 .DS_Store
-*.pkl
-backend/chroma_db/
 backend/data/census_raw/
-backend/ml/*.pkl
-backend/ml/*.joblib
 chroma_db/
 backend/.env
 backend/.env.
