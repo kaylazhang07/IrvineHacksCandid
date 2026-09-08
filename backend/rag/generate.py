@@ -69,7 +69,8 @@ Predicted budget impact: {json.dumps(budget_data)}"""
                 },
             ],
         )
-    except Exception:
+    except Exception as e:
+        print(f"[generate] Groq API error: {e}")
         return {
             "plain_english_summary": "AI explanation temporarily unavailable. Please try again shortly.",
             "personal_impact_statement": "Impact estimate unavailable.",
