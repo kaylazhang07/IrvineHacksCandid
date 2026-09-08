@@ -1,20 +1,17 @@
 import os
-from dotenv import load_dotenv
-from pinecone import Pinecone
+import chromadb
 from sentence_transformers import SentenceTransformer
 
-load_dotenv()
-
-_index = None
+_client = None
+_collection = None
 _model = None
 
 
-def _get_index():
-    global _index
-    if _index is None:
-        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-        _index = pc.Index(host=os.getenv("PINECONE_HOST"))
-    return _index
+def _get_client():
+    global _client
+    if _client is None:
+        _client = chromadb.PersistentClient(path=os.path.join(os.path.dirname(__file__), "../chroma_db"))
+    return _client
 
 
 def _get_model():
@@ -25,34 +22,39 @@ def _get_model():
 
 
 def get_collection():
-    """Backward compat — returns Pinecone index."""
-    return _get_index()
+    global _collection
+    if _collection is None:
+        client = _get_client()
+        _collection = client.get_or_create_collection("legislation")
+    return _collection
 
 
 def retrieve_chunks(query: str, state: str, jurisdiction: str = "state",
                     top_k: int = 8, measure_id: str = "") -> list:
     try:
-        index = _get_index()
+        collection = get_collection()
         model = _get_model()
         embedding = model.encode(query).tolist()
 
-        res = index.query(
-            vector=embedding,
-            top_k=top_k,
-            include_metadata=True,
+        where = {"state": state} if state else None
+        results = collection.query(
+            query_embeddings=[embedding],
+            n_results=top_k,
+            where=where,
+            include=["documents", "metadatas", "distances"],
         )
 
         chunks = []
-        for match in res.matches:
-            meta = match.metadata or {}
+        for i, doc in enumerate(results["documents"][0]):
+            meta = results["metadatas"][0][i] or {}
             chunks.append({
-                "chunk_id": match.id,
-                "chunk_text": meta.get("text", ""),
+                "chunk_id": results["ids"][0][i],
+                "chunk_text": doc,
                 "source_url": meta.get("source_url", ""),
                 "state": meta.get("state", ""),
                 "category": meta.get("category", ""),
                 "measure_id": meta.get("measure_id", ""),
-                "score": match.score,
+                "score": 1 - results["distances"][0][i],
             })
 
         return filter_federal(chunks, measure_id)

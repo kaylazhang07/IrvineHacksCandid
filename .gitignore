@@ -13,19 +13,6 @@ backend/.env
 # misc
 .DS_Store
 backend/data/census_raw/
-chroma_db/
-backend/.env
-backend/.env.
-backend/chroma_db/
-backend/venv/
-backend/migrate_to_pinecone.py
-backend/ingest_log.txt
-backend/max_ingest_log.txt
-__pycache__/
-backend/.env
-backend/.env.
-backend/chroma_db/
-backend/venv/
 backend/migrate_to_pinecone.py
 backend/ingest_log.txt
 backend/max_ingest_log.txt
