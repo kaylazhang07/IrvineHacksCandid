@@ -53,6 +53,7 @@ export default function BallotPage() {
                 summary={m.summary}
                 category={m.category}
                 estimatedImpact={m.personal_annual_usd}
+                onSelect={() => {}}
               />
             ))
         }
