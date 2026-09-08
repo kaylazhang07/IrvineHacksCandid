@@ -1,15 +1,25 @@
 from dotenv import load_dotenv
 load_dotenv()  # must run before any module reads os.environ
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import explain, budget, map as map_router, measures, races, follow_money
 
 app = FastAPI(title="Candid API")
 
+_base_origins = [
+    "http://localhost:3000", "http://localhost:3001",
+    "http://localhost:3002", "http://localhost:3003",
+    "https://candid.vercel.app",
+    "https://irvine-hacks-candid.vercel.app",
+]
+_extra = os.getenv("CORS_ORIGINS", "")
+allow_origins = _base_origins + [o.strip() for o in _extra.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003", "https://candid.vercel.app"],
+    allow_origins=allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
