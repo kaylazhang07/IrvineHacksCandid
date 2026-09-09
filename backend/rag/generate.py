@@ -77,9 +77,12 @@ Predicted budget impact: {json.dumps(budget_data)}"""
         }
 
     raw = response.choices[0].message.content.strip()
+    # Strip Qwen3 think tags
+    if "<think>" in raw:
+        raw = raw.split("</think>", 1)[-1].strip()
     # Strip markdown fences if present
     if raw.startswith("```"):
-        raw = raw.split("\n", 1)[-1]  # remove first line
+        raw = raw.split("\n", 1)[-1]
     if raw.endswith("```"):
         raw = raw.rsplit("```", 1)[0]
     raw = raw.strip()
