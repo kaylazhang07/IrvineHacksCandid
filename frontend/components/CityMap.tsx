@@ -666,8 +666,10 @@ async function fetchAllPinsForArea(
 
         if (pin && !isValidPlaceName(pin.name)) {
           console.warn(`[CityMap] Skipping low-quality pin: "${pin.name}" for ${cat}`);
-          pin = null; // Forces the orchestrator to treat this as a failed find
+          pin = null;
         }
+
+        if (!pin) pin = fallbackPin(cat, lat, lng, i + batchIdx);
 
         if (pin) {
           pin.address = await reverseGeocode(pin.lat, pin.lon, token);
