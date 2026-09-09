@@ -58,7 +58,7 @@ Predicted budget impact: {json.dumps(budget_data)}"""
     try:
         response = client.chat.completions.create(
             model="qwen/qwen3.8-27b",
-            max_tokens=1024,
+            max_tokens=900,
             temperature=0.3,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
