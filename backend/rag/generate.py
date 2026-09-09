@@ -60,7 +60,6 @@ Predicted budget impact: {json.dumps(budget_data)}"""
             model="qwen/qwen3.8-27b",
             max_tokens=1024,
             temperature=0.3,
-            response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {

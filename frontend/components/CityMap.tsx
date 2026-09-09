@@ -351,7 +351,7 @@ function cacheKey(lat: number, lng: number): string {
 }
 
 // ─── Cache version — bump this when you change query logic ───────────────────────
-const PIN_CACHE_VERSION = 5;
+const PIN_CACHE_VERSION = 6;
 
 // ─── Prioritized Overpass queries per category ────────────────────────────────────
 
@@ -372,14 +372,16 @@ const PRIORITY_QUERIES: Record<string, Array<{ q: string; r: number }>> = {
     { q: 'way["amenity"="fire_station"](around:{R},{LAT},{LNG});node["amenity"="fire_station"](around:{R},{LAT},{LNG});', r: 10000 },
   ],
   transportation: [
-    { q: 'node["railway"="station"](around:{R},{LAT},{LNG});way["railway"="station"](around:{R},{LAT},{LNG});', r: 5000 },
-    { q: 'node["public_transport"="station"](around:{R},{LAT},{LNG});way["public_transport"="station"](around:{R},{LAT},{LNG});', r: 4000 },
-    { q: 'node["amenity"="bus_station"](around:{R},{LAT},{LNG});', r: 3000 },
-    { q: 'node["highway"="bus_stop"](around:{R},{LAT},{LNG});', r: 2000 },
+    { q: 'node["railway"="station"](around:{R},{LAT},{LNG});way["railway"="station"](around:{R},{LAT},{LNG});', r: 10000 },
+    { q: 'node["public_transport"="station"](around:{R},{LAT},{LNG});way["public_transport"="station"](around:{R},{LAT},{LNG});', r: 8000 },
+    { q: 'node["amenity"="bus_station"](around:{R},{LAT},{LNG});', r: 6000 },
+    { q: 'node["highway"="bus_stop"](around:{R},{LAT},{LNG});', r: 3000 },
   ],
   environment: [
-    { q: 'way["leisure"="nature_reserve"](around:{R},{LAT},{LNG});relation["leisure"="nature_reserve"](around:{R},{LAT},{LNG});', r: 8000 },
-    { q: 'way["leisure"="park"](around:{R},{LAT},{LNG});relation["leisure"="park"](around:{R},{LAT},{LNG});', r: 5000 },
+    { q: 'way["leisure"="nature_reserve"](around:{R},{LAT},{LNG});relation["leisure"="nature_reserve"](around:{R},{LAT},{LNG});', r: 15000 },
+    { q: 'relation["boundary"="protected_area"](around:{R},{LAT},{LNG});way["boundary"="protected_area"](around:{R},{LAT},{LNG});', r: 15000 },
+    { q: 'way["natural"="wood"](around:{R},{LAT},{LNG});relation["natural"="wood"](around:{R},{LAT},{LNG});', r: 10000 },
+    { q: 'way["leisure"="park"](around:{R},{LAT},{LNG});relation["leisure"="park"](around:{R},{LAT},{LNG});', r: 8000 },
     { q: 'node["leisure"="garden"](around:{R},{LAT},{LNG});', r: 3000 },
   ],
   government: [
@@ -669,9 +671,10 @@ async function fetchAllPinsForArea(
           pin = null;
         }
 
-        if (!pin) pin = fallbackPin(cat, lat, lng, i + batchIdx);
+        const isFallback = !pin;
+        if (isFallback) pin = fallbackPin(cat, lat, lng, i + batchIdx);
 
-        if (pin) {
+        if (pin && !isFallback) {
           pin.address = await reverseGeocode(pin.lat, pin.lon, token);
         }
 
@@ -1104,7 +1107,7 @@ export default function CityMap({
 
   // ── ONE-TIME cache nuke for stale entries (remove after confirming fix) ─────
   useEffect(() => {
-    const NUKE_KEY = 'candid_cache_nuked_v2';
+    const NUKE_KEY = 'candid_cache_nuked_v3';
     if (!localStorage.getItem(NUKE_KEY)) {
       const keys = Object.keys(localStorage).filter((k) => k.startsWith('osm_pins_'));
       keys.forEach((k) => localStorage.removeItem(k));
