@@ -351,7 +351,7 @@ function cacheKey(lat: number, lng: number): string {
 }
 
 // ─── Cache version — bump this when you change query logic ───────────────────────
-const PIN_CACHE_VERSION = 8;
+const PIN_CACHE_VERSION = 9;
 
 // ─── Prioritized Overpass queries per category ────────────────────────────────────
 
@@ -475,6 +475,8 @@ async function fetchCategoryPinOverpass(
             el.tags?.operator ??
             el.tags?.brand;
           if (!isValidPlaceName(rawName)) return null;
+          // Reject standalone ATMs, vending machines, etc. — not useful as POI anchors
+          if (/\batm\b/i.test(rawName ?? '') || /\bvending\b/i.test(rawName ?? '')) return null;
 
           return {
             name: rawName!.trim(),
@@ -1100,7 +1102,7 @@ export default function CityMap({
 
   // ── ONE-TIME cache nuke for stale entries (remove after confirming fix) ─────
   useEffect(() => {
-    const NUKE_KEY = 'candid_cache_nuked_v5';
+    const NUKE_KEY = 'candid_cache_nuked_v6';
     if (!localStorage.getItem(NUKE_KEY)) {
       const keys = Object.keys(localStorage).filter((k) => k.startsWith('osm_pins_'));
       keys.forEach((k) => localStorage.removeItem(k));
