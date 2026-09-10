@@ -351,7 +351,7 @@ function cacheKey(lat: number, lng: number): string {
 }
 
 // ─── Cache version — bump this when you change query logic ───────────────────────
-const PIN_CACHE_VERSION = 6;
+const PIN_CACHE_VERSION = 7;
 
 // ─── Prioritized Overpass queries per category ────────────────────────────────────
 
@@ -449,7 +449,7 @@ async function fetchCategoryPinOverpass(
       .replaceAll('{LNG}', lng.toFixed(6))
       .replaceAll('{R}', String(radius));
 
-    const query = `[out:json][timeout:10];(${inner});out center 10;`;
+    const query = `[out:json][timeout:25];(${inner});out center 50;`;
 
     try {
       const res = await fetch('https://overpass-api.de/api/interpreter', {
@@ -547,7 +547,6 @@ async function fetchCategoryPinMapboxFallback(
   token: string,
 ): Promise<PinLocation | null> {
   const terms = MAPBOX_SEARCH_TERMS[category] ?? [category.replace(/_/g, ' ')];
-  const validCats = MAPBOX_VALID_CATEGORIES[category] ?? [];
 
   for (const term of terms) {
     try {
@@ -555,7 +554,7 @@ async function fetchCategoryPinMapboxFallback(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(term)}.json`,
       );
       url.searchParams.set('proximity', `${lng},${lat}`);
-      url.searchParams.set('limit', '5');
+      url.searchParams.set('limit', '1');
       url.searchParams.set('types', 'poi');
       url.searchParams.set('access_token', token);
 
@@ -563,30 +562,15 @@ async function fetchCategoryPinMapboxFallback(
       if (!res.ok) continue;
 
       const data = await res.json();
-      const features: any[] = data?.features ?? [];
-
-      for (const feature of features) {
-        const featureCats: string = (
-          (feature.properties?.category ?? '') + ' ' + (feature.place_name ?? '')
-        ).toLowerCase();
-
-        if (validCats.length > 0) {
-          const matches = validCats.some((vc) => featureCats.includes(vc));
-          if (!matches) continue;
-        }
-
-        const fLat = feature.center[1];
-        const fLon = feature.center[0];
-        if (haversineMeters(lat, lng, fLat, fLon) > 15000) continue;
-
+      const feature = data?.features?.[0];
+      if (feature) {
         return {
           name: feature.text ?? feature.place_name ?? term,
-          lat: fLat,
-          lon: fLon,
+          lat: feature.center[1],
+          lon: feature.center[0],
         };
       }
-    } catch (err) {
-      console.warn(`Overpass query failed for ${category}:`, err);
+    } catch {
       continue;
     }
   }
@@ -1105,7 +1089,7 @@ export default function CityMap({
 
   // ── ONE-TIME cache nuke for stale entries (remove after confirming fix) ─────
   useEffect(() => {
-    const NUKE_KEY = 'candid_cache_nuked_v3';
+    const NUKE_KEY = 'candid_cache_nuked_v4';
     if (!localStorage.getItem(NUKE_KEY)) {
       const keys = Object.keys(localStorage).filter((k) => k.startsWith('osm_pins_'));
       keys.forEach((k) => localStorage.removeItem(k));
