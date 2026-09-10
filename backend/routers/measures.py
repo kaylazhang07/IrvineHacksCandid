@@ -197,8 +197,9 @@ def _query_measures(collection, where_filter, limit=8):
 
         chunk_text = meta.get("text", "")
         title = _readable_title(mid, chunk_text)
-        category_label = category.replace("_", " ")
-        summary = f"Federal legislation affecting {category_label} policy. Click to see your personalized impact analysis."
+        summary = _clean_summary(chunk_text)
+        if not summary:
+            summary = f"Federal legislation affecting {category.replace('_', ' ')} policy."
 
         measures.append(Measure(
             measure_id=mid,
