@@ -107,22 +107,45 @@ SAMPLE_MEASURES = [
 ]
 
 
-BAD_TITLE_PREFIXES = ("sec.", "section", "[congressional", "u.s. government", "a bill", "an act")
+CATEGORY_QUERIES = {
+    "housing": "affordable housing rent tenant eviction mortgage",
+    "education": "school education student teacher university funding",
+    "transportation": "transit highway bus rail transportation infrastructure",
+    "public_safety": "police fire safety crime emergency response",
+    "environment": "climate environment conservation energy pollution",
+    "healthcare": "health medical hospital insurance medicaid medicare",
+    "economy": "tax business jobs wage worker employment",
+}
+
+BILL_TYPE_NAMES = {"HR": "H.R.", "S": "S.", "HJRES": "H.J.Res.", "SJRES": "S.J.Res.",
+                   "HRES": "H.Res.", "SRES": "S.Res.", "HCONRES": "H.Con.Res.", "SCONRES": "S.Con.Res."}
+
+import re as _re
 
 def _readable_title(measure_id: str) -> str:
-    """Construct a human-readable title from a measure_id like HR-119-214 or CA-SB 1072."""
     parts = measure_id.split("-")
     if len(parts) >= 3:
-        bill_type, congress, number = parts[0], parts[1], parts[2]
-        return f"{bill_type.upper()} {number} ({congress}th Congress)"
-    return measure_id.replace("-", " ").upper()
+        bill_type = BILL_TYPE_NAMES.get(parts[0].upper(), parts[0].upper())
+        number = parts[2]
+        congress = parts[1]
+        return f"{bill_type} {number} ({congress}th Congress)"
+    return measure_id.upper()
+
+
+def _clean_summary(text: str) -> str:
+    text = _re.sub(r"<[^>]+>", "", text)
+    text = _re.sub(r"\[.*?\]", "", text)
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    lines = [l for l in lines if not l.isupper() and len(l) > 40]
+    return " ".join(lines)[:400].strip()
 
 
 def _query_measures(collection, where_filter, limit=200):
     """Query Pinecone and deduplicate by measure_id."""
     try:
         from rag.embed import embed_batch
-        query_text = where_filter.get("category", {}).get("$eq", "legislation")
+        category = where_filter.get("category", {}).get("$eq", "") if isinstance(where_filter.get("category"), dict) else ""
+        query_text = CATEGORY_QUERIES.get(category, "legislation law congress bill")
         embedding = embed_batch([query_text])[0]
         filter_dict = {}
         if "$and" in where_filter:
@@ -133,7 +156,7 @@ def _query_measures(collection, where_filter, limit=200):
             filter_dict = where_filter
         res = collection.query(
             vector=embedding,
-            top_k=min(limit, 100),
+            top_k=min(limit * 5, 500),
             include_metadata=True,
             filter=filter_dict if filter_dict else None,
         )
@@ -153,24 +176,15 @@ def _query_measures(collection, where_filter, limit=200):
         seen.add(mid)
 
         category = meta.get("category", "other")
-        chunk_text = meta.get("text", "")
-
-        parts = chunk_text.split("\n\n", 1)
-        raw_title = parts[0].strip()
-        summary = parts[1].strip()[:400] if len(parts) > 1 and parts[1].strip() else ""
-
-        if raw_title.lower().startswith(BAD_TITLE_PREFIXES) or len(raw_title) > 200:
-            title = _readable_title(mid)
-            summary = summary or chunk_text[:300].strip()
-        else:
-            title = raw_title[:200]
-
-        if not summary:
-            summary = "Federal legislation related to " + category.replace("_", " ") + "."
-
         impact = CATEGORY_IMPACT.get(category, 0)
         if impact == 0:
             continue
+
+        chunk_text = meta.get("text", "")
+        title = _readable_title(mid)
+        summary = _clean_summary(chunk_text)
+        if not summary:
+            summary = f"Federal legislation affecting {category.replace('_', ' ')} policy."
 
         measures.append(Measure(
             measure_id=mid,
@@ -179,6 +193,9 @@ def _query_measures(collection, where_filter, limit=200):
             category=category,
             personal_annual_usd=float(impact),
         ))
+
+        if len(measures) >= limit:
+            break
 
     return measures
 
