@@ -17,6 +17,7 @@ STRICT RULES:
 5. Never editorialize or express political opinions
 6. Max 3 sentences for plain_english_summary
 7. Output ONLY valid JSON — no markdown fences, no preamble
+8. If a nearby location is provided, explain how the legislation could affect that place or the people who use it — the chunks do NOT need to mention the location by name
 
 Output schema:
 {
@@ -33,6 +34,7 @@ def generate_explanation(
     chunks: list[dict],
     user,
     budget_shifts: list,
+    location_name: str | None = None,
 ) -> dict:
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
@@ -41,12 +43,14 @@ def generate_explanation(
         for s in budget_shifts
     ]
 
+    location_line = f"\nVoter's nearby location: {location_name}" if location_name else ""
+
     user_context = f"""Voter profile:
 - Zip code: {user.zip_code}
 - Housing: {user.housing_status}
 - Has children: {user.has_children}
 - Income: {user.household_income_bracket}
-- Top concerns: {', '.join(user.primary_concerns)}
+- Top concerns: {', '.join(user.primary_concerns)}{location_line}
 
 Predicted budget impact: {json.dumps(budget_data)}"""
 
@@ -87,11 +91,9 @@ Predicted budget impact: {json.dumps(budget_data)}"""
         raw = raw.rsplit("```", 1)[0]
     raw = raw.strip()
 
-    # Try to extract JSON from the response
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Try to find JSON object in the text
         start = raw.find("{")
         end = raw.rfind("}") + 1
         if start >= 0 and end > start:
