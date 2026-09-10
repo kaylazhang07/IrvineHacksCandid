@@ -124,21 +124,20 @@ import re as _re
 
 def _readable_title(measure_id: str, chunk_text: str = "") -> str:
     parts = measure_id.split("-")
-    bill_label = measure_id.upper()
-    if len(parts) >= 3:
+    if len(parts) >= 2:
         bill_type = BILL_TYPE_NAMES.get(parts[0].upper(), parts[0].upper())
-        number = parts[2]
+        number = parts[-1]
         bill_label = f"{bill_type} {number}"
+    else:
+        bill_label = measure_id.upper()
 
-    # Try to find short title like 'cited as the "XYZ Act"'
-    cited = _re.search(r'cited as[^"]*"([^"]{10,80})"', chunk_text, _re.IGNORECASE)
+    # Try to find short title like 'cited as the "XYZ Act"' or 'cited as ``XYZ Act'
+    cited = _re.search(r"cited as[^`\"]*[`\"]+([^`\"]{10,80})[`\"]+", chunk_text, _re.IGNORECASE)
     if cited:
-        return f"{bill_label} — {cited.group(1)}"
+        return f"{bill_label} — {cited.group(1).strip()}"
 
-    # Try to extract purpose from "<DOC>...H. R. 214 To amend..."
-    purpose = _re.search(r"H\.\s*R\.\s*\d+\s+(To\s+[^.]{20,120})", chunk_text, _re.IGNORECASE)
-    if not purpose:
-        purpose = _re.search(r"S\.\s*\d+\s+(To\s+[^.]{20,120})", chunk_text, _re.IGNORECASE)
+    # Try to extract purpose from header "H. R. 1197 To amend..."
+    purpose = _re.search(r"(?:H\.\s*R\.|S\.)\s*\d+\s+(To\s+[^.\n]{20,100})", chunk_text, _re.IGNORECASE)
     if purpose:
         return f"{bill_label} — {purpose.group(1).strip()}"
 
@@ -148,9 +147,15 @@ def _readable_title(measure_id: str, chunk_text: str = "") -> str:
 def _clean_summary(text: str) -> str:
     text = _re.sub(r"<[^>]+>", "", text)
     text = _re.sub(r"\[.*?\]", "", text)
+    text = _re.sub(r"``+", '"', text)
+    text = _re.sub(r"--+", " ", text)
+    text = _re.sub(r"\.\s*\([a-z]\)\s*", ". ", text)
     lines = [l.strip() for l in text.splitlines() if l.strip()]
-    lines = [l for l in lines if not l.isupper() and len(l) > 40]
-    return " ".join(lines)[:400].strip()
+    lines = [l for l in lines if not l.isupper() and not l.startswith("SEC.") and len(l) > 40]
+    clean = " ".join(lines)
+    sentences = _re.split(r'(?<=[.!?])\s+', clean)
+    sentences = [s for s in sentences if len(s) > 30 and not s.strip().startswith("SEC.")]
+    return " ".join(sentences[:3])[:400].strip()
 
 
 def _query_measures(collection, where_filter, limit=8):
