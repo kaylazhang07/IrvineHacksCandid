@@ -122,14 +122,27 @@ BILL_TYPE_NAMES = {"HR": "H.R.", "S": "S.", "HJRES": "H.J.Res.", "SJRES": "S.J.R
 
 import re as _re
 
-def _readable_title(measure_id: str) -> str:
+def _readable_title(measure_id: str, chunk_text: str = "") -> str:
     parts = measure_id.split("-")
+    bill_label = measure_id.upper()
     if len(parts) >= 3:
         bill_type = BILL_TYPE_NAMES.get(parts[0].upper(), parts[0].upper())
         number = parts[2]
-        congress = parts[1]
-        return f"{bill_type} {number} ({congress}th Congress)"
-    return measure_id.upper()
+        bill_label = f"{bill_type} {number}"
+
+    # Try to find short title like 'cited as the "XYZ Act"'
+    cited = _re.search(r'cited as[^"]*"([^"]{10,80})"', chunk_text, _re.IGNORECASE)
+    if cited:
+        return f"{bill_label} — {cited.group(1)}"
+
+    # Try to extract purpose from "<DOC>...H. R. 214 To amend..."
+    purpose = _re.search(r"H\.\s*R\.\s*\d+\s+(To\s+[^.]{20,120})", chunk_text, _re.IGNORECASE)
+    if not purpose:
+        purpose = _re.search(r"S\.\s*\d+\s+(To\s+[^.]{20,120})", chunk_text, _re.IGNORECASE)
+    if purpose:
+        return f"{bill_label} — {purpose.group(1).strip()}"
+
+    return bill_label
 
 
 def _clean_summary(text: str) -> str:
@@ -140,13 +153,10 @@ def _clean_summary(text: str) -> str:
     return " ".join(lines)[:400].strip()
 
 
-def _query_measures(collection, where_filter, limit=200):
+def _query_measures(collection, where_filter, limit=8):
     """Query Pinecone and deduplicate by measure_id."""
     try:
-        from rag.embed import embed_batch
-        category = where_filter.get("category", {}).get("$eq", "") if isinstance(where_filter.get("category"), dict) else ""
-        query_text = CATEGORY_QUERIES.get(category, "legislation law congress bill")
-        embedding = embed_batch([query_text])[0]
+        embedding = [0.0] * 384
         filter_dict = {}
         if "$and" in where_filter:
             for f in where_filter["$and"]:
@@ -181,7 +191,7 @@ def _query_measures(collection, where_filter, limit=200):
             continue
 
         chunk_text = meta.get("text", "")
-        title = _readable_title(mid)
+        title = _readable_title(mid, chunk_text)
         summary = _clean_summary(chunk_text)
         if not summary:
             summary = f"Federal legislation affecting {category.replace('_', ' ')} policy."
@@ -237,4 +247,4 @@ async def list_measures(
             return [m for m in SAMPLE_MEASURES if m.category == topic]
         return SAMPLE_MEASURES
 
-    return measures[:50]
+    return measures[:8]
