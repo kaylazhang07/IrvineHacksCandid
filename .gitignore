@@ -17,3 +17,4 @@ backend/migrate_to_pinecone.py
 backend/ingest_log.txt
 backend/max_ingest_log.txt
 __pycache__/
+backend/chroma_db/

@@ -108,32 +108,43 @@ SAMPLE_MEASURES = [
 
 
 def _query_measures(collection, where_filter, limit=200):
-    """Query ChromaDB and deduplicate by measure_id."""
+    """Query Pinecone and deduplicate by measure_id."""
     try:
-        results = collection.get(
-            where=where_filter,
-            limit=limit,
-            include=["metadatas", "documents"],
+        from rag.embed import embed_batch
+        query_text = where_filter.get("category", {}).get("$eq", "legislation")
+        embedding = embed_batch([query_text])[0]
+        filter_dict = {}
+        if "$and" in where_filter:
+            for f in where_filter["$and"]:
+                for k, v in f.items():
+                    filter_dict[k] = v
+        else:
+            filter_dict = where_filter
+        res = collection.query(
+            vector=embedding,
+            top_k=min(limit, 100),
+            include_metadata=True,
+            filter=filter_dict if filter_dict else None,
         )
-    except Exception:
+        results_list = res.matches
+    except Exception as e:
+        print(f"measures query error: {e}")
         return []
 
     seen = set()
     measures = []
-    nl = chr(10)
-    separator = nl + nl
 
-    for i, meta in enumerate(results.get("metadatas", [])):
+    for match in results_list:
+        meta = match.metadata or {}
         mid = meta.get("measure_id", "")
         if not mid or mid in seen:
             continue
         seen.add(mid)
 
         category = meta.get("category", "other")
-        doc = results["documents"][i] if results.get("documents") else ""
-        chunk_text = meta.get("chunk_text", doc or "")
+        chunk_text = meta.get("text", "")
 
-        parts = chunk_text.split(separator, 1)
+        parts = chunk_text.split("\n\n", 1)
         title = parts[0].strip()[:200]
         summary = parts[1].strip()[:400] if len(parts) > 1 and parts[1].strip() else ""
 
