@@ -107,6 +107,17 @@ SAMPLE_MEASURES = [
 ]
 
 
+BAD_TITLE_PREFIXES = ("sec.", "section", "[congressional", "u.s. government", "a bill", "an act")
+
+def _readable_title(measure_id: str) -> str:
+    """Construct a human-readable title from a measure_id like HR-119-214 or CA-SB 1072."""
+    parts = measure_id.split("-")
+    if len(parts) >= 3:
+        bill_type, congress, number = parts[0], parts[1], parts[2]
+        return f"{bill_type.upper()} {number} ({congress}th Congress)"
+    return measure_id.replace("-", " ").upper()
+
+
 def _query_measures(collection, where_filter, limit=200):
     """Query Pinecone and deduplicate by measure_id."""
     try:
@@ -145,18 +156,28 @@ def _query_measures(collection, where_filter, limit=200):
         chunk_text = meta.get("text", "")
 
         parts = chunk_text.split("\n\n", 1)
-        title = parts[0].strip()[:200]
+        raw_title = parts[0].strip()
         summary = parts[1].strip()[:400] if len(parts) > 1 and parts[1].strip() else ""
 
+        if raw_title.lower().startswith(BAD_TITLE_PREFIXES) or len(raw_title) > 200:
+            title = _readable_title(mid)
+            summary = summary or chunk_text[:300].strip()
+        else:
+            title = raw_title[:200]
+
         if not summary:
-            summary = "State legislation related to " + category.replace("_", " ") + "."
+            summary = "Federal legislation related to " + category.replace("_", " ") + "."
+
+        impact = CATEGORY_IMPACT.get(category, 0)
+        if impact == 0:
+            continue
 
         measures.append(Measure(
             measure_id=mid,
             title=title,
             summary=summary,
             category=category,
-            personal_annual_usd=float(CATEGORY_IMPACT.get(category, 0)),
+            personal_annual_usd=float(impact),
         ))
 
     return measures

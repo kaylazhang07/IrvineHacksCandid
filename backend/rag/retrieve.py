@@ -35,7 +35,7 @@ def retrieve_chunks(query: str, state: str, jurisdiction: str = "state",
         model = _get_model()
         embedding = model.encode(query).tolist()
 
-        filter_dict = {"state": {"$eq": state}} if state else None
+        filter_dict = {"state": {"$in": [state, "US"]}} if state else None
         res = index.query(
             vector=embedding,
             top_k=top_k,
