@@ -351,7 +351,7 @@ function cacheKey(lat: number, lng: number): string {
 }
 
 // ─── Cache version — bump this when you change query logic ───────────────────────
-const PIN_CACHE_VERSION = 7;
+const PIN_CACHE_VERSION = 8;
 
 // ─── Prioritized Overpass queries per category ────────────────────────────────────
 
@@ -520,6 +520,7 @@ const MAPBOX_SEARCH_TERMS: Record<string, string[]> = {
   technology:     ['tech company', 'data center', 'computer store'],
   taxes:          ['tax preparation', 'accounting office', 'cpa'],
   foreign_policy: ['consulate', 'embassy', 'diplomatic mission'],
+  other:          ['community center', 'city hall', 'public library', 'recreation center'],
 };
 
 const MAPBOX_VALID_CATEGORIES: Record<string, string[]> = {
@@ -550,25 +551,35 @@ async function fetchCategoryPinMapboxFallback(
 
   for (const term of terms) {
     try {
-      const url = new URL(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(term)}.json`,
-      );
+      // Search Box v1 (replaces deprecated geocoding/v5)
+      const url = new URL('https://api.mapbox.com/search/searchbox/v1/forward');
+      url.searchParams.set('q', term);
       url.searchParams.set('proximity', `${lng},${lat}`);
-      url.searchParams.set('limit', '1');
+      url.searchParams.set('limit', '5');
       url.searchParams.set('types', 'poi');
       url.searchParams.set('access_token', token);
+      url.searchParams.set('language', 'en');
 
       const res = await fetch(url.toString());
       if (!res.ok) continue;
 
       const data = await res.json();
-      const feature = data?.features?.[0];
-      if (feature) {
-        return {
-          name: feature.text ?? feature.place_name ?? term,
-          lat: feature.center[1],
-          lon: feature.center[0],
-        };
+      const features: any[] = data?.features ?? [];
+
+      for (const feature of features) {
+        const coords = feature.geometry?.coordinates;
+        if (!coords || coords.length < 2) continue;
+        const fLon = coords[0];
+        const fLat = coords[1];
+
+        const name: string =
+          feature.properties?.name ??
+          feature.properties?.full_address ??
+          term;
+        if (!isValidPlaceName(name)) continue;
+        if (haversineMeters(lat, lng, fLat, fLon) > 15000) continue;
+
+        return { name, lat: fLat, lon: fLon };
       }
     } catch {
       continue;
@@ -583,10 +594,10 @@ async function reverseGeocode(
 ): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?types=address&limit=1&access_token=${token}`
+      `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lon}&latitude=${lat}&types=address&limit=1&access_token=${token}`
     );
     const data = await res.json();
-    return data.features?.[0]?.place_name ?? null;
+    return data.features?.[0]?.properties?.full_address ?? null;
   } catch {
     return null;
   }
@@ -1089,7 +1100,7 @@ export default function CityMap({
 
   // ── ONE-TIME cache nuke for stale entries (remove after confirming fix) ─────
   useEffect(() => {
-    const NUKE_KEY = 'candid_cache_nuked_v4';
+    const NUKE_KEY = 'candid_cache_nuked_v5';
     if (!localStorage.getItem(NUKE_KEY)) {
       const keys = Object.keys(localStorage).filter((k) => k.startsWith('osm_pins_'));
       keys.forEach((k) => localStorage.removeItem(k));
@@ -1328,13 +1339,14 @@ export default function CityMap({
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
     async function loadPins() {
-      // 1. Geocode ZIP
+      // 1. Geocode ZIP (v6 API)
       let center: [number, number] = [-118.2437, 34.0522];
       try {
         const geo = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(initialZip)}.json?country=us&types=postcode&access_token=${token}`,
+          `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(initialZip)}&country=US&types=postcode&limit=1&access_token=${token}`,
         ).then((r) => r.json());
-        if (geo.features?.[0]?.center) center = geo.features[0].center;
+        const coords = geo.features?.[0]?.geometry?.coordinates;
+        if (coords) center = [coords[0], coords[1]];
       } catch {}
 
       if (cancelled) return;
